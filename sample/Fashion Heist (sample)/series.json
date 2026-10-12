@@ -1,0 +1,8 @@
+{
+  "name": "Fashion Heist (sample)",
+  "fmt": "9:16",
+  "style": "cinematic period microdrama, gritty 19th-century fairytale realism, filmic color grade",
+  "ban": "no extra fingers, no extra limbs, no deformed or melted faces, no floating UI, no stray marks or sparkles, no watermarks or logos, no text, no sudden camera roll, no jump zoom, no flicker, stable character faces",
+  "defaultVideoModelId": "minimax/h3-max/image-to-video",
+  "registry": []
+}

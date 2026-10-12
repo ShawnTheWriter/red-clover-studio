@@ -1,0 +1,1484 @@
+{
+  "schemaVersion": 2,
+  "id": "j1tuapx",
+  "seriesId": null,
+  "name": "Fashion Heist (sample) — S1E1 The Workshop",
+  "number": null,
+  "dir": "Fashion Heist (sample)/S1E1 The Workshop",
+  "gate": "G2",
+  "gateLog": [],
+  "hook": "",
+  "cliffhanger": "",
+  "assetAuditOverrides": {},
+  "fmt": "9:16",
+  "style": "cinematic period microdrama, gritty 19th-century fairytale realism, filmic color grade",
+  "ban": "no extra fingers, no extra limbs, no deformed or melted faces, no floating UI, no stray marks or sparkles, no watermarks or logos, no text, no sudden camera roll, no jump zoom, no flicker, stable character faces",
+  "lean": false,
+  "scriptPath": "Fashion Heist (sample)/S1E1 The Workshop/00_script/The Workshop.fountain",
+  "scenes": [
+    {
+      "id": "00bmen8",
+      "number": "1",
+      "heading": "INT. A Secret Workshop - DAY",
+      "intext": "INT.",
+      "loc": "A Secret Workshop",
+      "time": "DAY",
+      "synopsis": "Dingy, with a ratty dressmaker’s dummy and a broken sewing machine powered by foot. Light filters through cracked shutters.",
+      "characters": [
+        "Overlock"
+      ],
+      "extras": [],
+      "props": [],
+      "pageStart": 0,
+      "scriptNumber": "1"
+    },
+    {
+      "id": "71wtbmt",
+      "number": "2",
+      "heading": "INT. Secret Workshop - DAY",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "synopsis": "There’s a pounding on the door.",
+      "characters": [
+        "Flame",
+        "Overlock"
+      ],
+      "extras": [],
+      "props": [],
+      "pageStart": 5,
+      "scriptNumber": "2"
+    }
+  ],
+  "shots": [
+    {
+      "id": "h3tsnzt",
+      "sceneId": "lv71zoy",
+      "sceneNum": "1",
+      "shotCode": "a",
+      "intext": "INT.",
+      "loc": "A Secret Workshop",
+      "time": "DAY",
+      "label": "Overlock's workshop establishing_she sleeps on bed",
+      "size": "MS",
+      "angle": "eye",
+      "lens": "50mm",
+      "move": "static",
+      "subjects": "",
+      "action": "",
+      "location": "A Secret Workshop",
+      "lighting": "",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "52u2912",
+        "abh5n7w"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "vkli6xz",
+          "role": "start",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/04a_int-day-workshop_est-secret-workshop.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-23T19:24:20.378Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        }
+      ],
+      "timecodePrompt": "",
+      "videoPromptOverride": "",
+      "blocking": null,
+      "versions": [],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "selectedVersions": [],
+      "takeTrims": {},
+      "videoModelId": ""
+    },
+    {
+      "id": "zuy72as",
+      "sceneId": "00bmen8",
+      "sceneNum": "1",
+      "shotCode": "b",
+      "intext": "INT.",
+      "loc": "A Secret Workshop",
+      "time": "DAY",
+      "label": "Insert coverage of the squalor: flies in window",
+      "size": "CU",
+      "angle": "high",
+      "lens": "85mm",
+      "move": "whip-pan",
+      "subjects": "fly",
+      "action": "",
+      "location": "A Secret Workshop",
+      "lighting": "hard shafts of daylight through cracked shutters",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "81rpfg7",
+        "92sl5dl",
+        "a0mzbmw",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "blwwukr",
+          "role": "start",
+          "keyframe": true,
+          "desc": "Flies buzz in the bands of sunlight that fall through the window",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/04b_flies near window.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-23T10:26:37.879Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          }
+        }
+      ],
+      "timecodePrompt": "【Style】cinematic period microdrama, gritty 19th-century fairytale realism, filmic color grade\n【Duration】4 seconds · 【Aspect】9:16\n\nAsset map:\n@Image4 = fly (prop)\n\n[00:00-00:04] Shot 1: Insert coverage of the squalor: flies in window. Flies buzz around at high speed, basking in the light that passes through the wooden shutters.\n\nConstraints (negative — keep in this separate block, don't fold into the lines above): no extra fingers, no extra limbs, no deformed or melted faces, no floating UI, no stray marks or sparkles, no watermarks or logos, no text, no sudden camera roll, no jump zoom, no flicker, stable character faces",
+      "videoPromptOverride": "",
+      "blocking": null,
+      "versions": [],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "selectedVersions": [],
+      "takeTrims": {},
+      "videoModelId": ""
+    },
+    {
+      "id": "n7ursxk",
+      "sceneId": "00bmen8",
+      "sceneNum": "1",
+      "shotCode": "c",
+      "intext": "INT.",
+      "loc": "A Secret Workshop",
+      "time": "DAY",
+      "label": "Insert coverage of the squalor: rat eating bread",
+      "size": "CU",
+      "angle": "high",
+      "lens": "85mm",
+      "move": "whip-pan",
+      "subjects": "rat, fly",
+      "action": "Insert coverage of squalor: a rat gnaws a crust of moldy bread",
+      "location": "A Secret Workshop",
+      "lighting": "hard shafts of daylight through cracked shutters",
+      "atmos": "",
+      "audio": "rat gnawing, insect buzz",
+      "music": null,
+      "refs": [
+        "81rpfg7",
+        "92sl5dl",
+        "a0mzbmw",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "76o5yt3",
+          "role": "start",
+          "keyframe": true,
+          "desc": "A rat gnaws a piece of moldy bread.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/04c_int-day-a-secret-workshop_insert-coverage-of-the-squalor-rat-on-bread-fly-on-the-laundry-pile_start.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-21T21:27:09.299Z",
+            "driver": "fal",
+            "model": "fal-ai/gpt-image-1"
+          }
+        }
+      ],
+      "timecodePrompt": "",
+      "videoPromptOverride": "Insert coverage of squalor: a rat gnaws a crust of moldy bread. camera locked down",
+      "blocking": null,
+      "versions": [],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "selectedVersions": [],
+      "takeTrims": {},
+      "videoModelId": ""
+    },
+    {
+      "id": "s1qqw2u",
+      "sceneId": "00bmen8",
+      "sceneNum": "1",
+      "shotCode": "d",
+      "intext": "INT.",
+      "loc": "A Secret Workshop",
+      "time": "DAY",
+      "label": "Bobbin squeezes through the window bars into the workshop",
+      "size": "CU",
+      "angle": "eye",
+      "lens": "85mm",
+      "move": "push-in",
+      "subjects": "Bobbin (hummingbird)",
+      "action": "A hummingbird hovers inside of a broken window and then zips into the room, leaving the frame on the left side",
+      "location": "A Secret Workshop",
+      "lighting": "hard shafts of daylight through cracked shutters, dust motes drifting",
+      "atmos": "",
+      "audio": "wingbeat flutter, distant street ambience",
+      "music": null,
+      "refs": [
+        "en16pg2",
+        "nt9hwgt"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "imoxtxt",
+          "role": "start",
+          "keyframe": true,
+          "desc": "A hummingbird hovers inside of a broken window and then zips into the room, leaving the frame on the left side",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/04d_bobbin enters workshop.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-21T20:47:49.312Z",
+            "driver": "gemini",
+            "model": "gemini-3.1-flash-image-preview"
+          }
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": {
+        "chars": [
+          {
+            "key": "en16pg2",
+            "name": "Bobbin (hummingbird)",
+            "x": 0.5772727272727273,
+            "y": 0.37727272727272726
+          }
+        ],
+        "camera": null
+      },
+      "versions": [],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "videoPromptOverride": "A hummingbird hovers inside of a broken window and then zips into the room, leaving the frame on the left side. Camera: push in. Sound: wingbeat flutter, distant medieval street ambience. no music",
+      "selectedVersions": [],
+      "takeTrims": {},
+      "videoModelId": ""
+    },
+    {
+      "id": "2epajqo",
+      "sceneId": "00bmen8",
+      "sceneNum": "1",
+      "shotCode": "e",
+      "intext": "INT.",
+      "loc": "A Secret Workshop",
+      "time": "DAY",
+      "label": "Overlock wakes — scissors raised, eyes wide in terror",
+      "size": "CU",
+      "angle": "high",
+      "lens": "85mm",
+      "move": "push-in",
+      "subjects": "Overlock",
+      "action": "Overlock jolts awake, a pair of scissors raised like a weapon, her eyes wide in terror before she registers it's only the bird.",
+      "location": "A Secret Workshop",
+      "lighting": "hard shafts of daylight through cracked shutters",
+      "atmos": "",
+      "audio": "sharp intake of breath",
+      "music": null,
+      "refs": [
+        "abh5n7w",
+        "ectbcxo",
+        "en16pg2",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "s3h52uq",
+          "role": "start",
+          "keyframe": true,
+          "desc": "Overlock jolts awake, a pair of scissors raised like a weapon, her eyes wide in terror before she registers it's only the bird.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "abh5n7w",
+            "line": "My name is Overlock Stitch. I’m wanted for a capital offense.",
+            "delivery": "V.O., steady, resigned"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/04e_shot_03_overlock_wakes_shears_start_frame.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-23T20:11:18.098Z",
+            "driver": "frame-grab",
+            "model": "from take lis14od"
+          }
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": null,
+      "versions": [],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "END treatment (post, not a generation): freeze the final render frame, desaturate to B&W, hold under the V.O. line. Don't burn generation budget on a still for this.",
+      "selectedVersions": [],
+      "takeTrims": {},
+      "videoModelId": ""
+    },
+    {
+      "id": "7oewoyt",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "a",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "Overlock opens doors reveals flame",
+      "size": "MS",
+      "angle": "eye",
+      "lens": "35mm",
+      "move": "handheld",
+      "subjects": "Overlock, Flame",
+      "action": "Standing on the other side, chewing a matchstick, is Flame — the little match girl. They stare at each other in silence.",
+      "location": "Secret Workshop",
+      "lighting": "daylight, doorway backlight",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "abh5n7w",
+        "tgirv6n",
+        "qp3gvcm",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "eyep0sa",
+          "role": "start",
+          "keyframe": true,
+          "desc": "Standing on the other side, chewing a matchstick, is Flame. They stare at each other in silence.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05b_start_Overlook eases door open.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T12:37:40.276Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          }
+        },
+        {
+          "id": "edb9a2d",
+          "role": "mid",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05b_mid_overlock eases door open Flame.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T12:38:04.122Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        },
+        {
+          "id": "fpq3v8m",
+          "role": "mid",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05b_Flame's questions.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T14:20:43.591Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv02fq9jysgna",
+          "shotId": "7oewoyt",
+          "modelId": "minimax/h3-max/image-to-video",
+          "modelLabel": "MiniMax H3 Max (768P)",
+          "driver": "fal",
+          "seconds": 5,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05b_start_Overlook eases door open.jpg",
+          "endKeyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05b_mid_overlock eases door open Flame.jpg",
+          "billable": true,
+          "estimateUSD": 0.24,
+          "quotedUSD": 0.24,
+          "estimateConfidence": "measured",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5a_INT-Secret-Workshop-Day_H3Max768_mv02fq9jysgna.mp4",
+          "submittedAt": "2026-10-08T21:45:55.639Z",
+          "finishedAt": "2026-10-08T21:46:13.326Z",
+          "elapsedMs": 17686,
+          "prompt": "Overlock creeps to the door and eases it open. the door opens outwards, revealing Flame, a fiery redheaded woman in the street outside. No dialogue. No music. Camera: handheld"
+        }
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "videoPromptOverride": "Overlock creeps to the door and eases it open. the door opens outwards, revealing Flame, a fiery redheaded woman in the street outside. No dialogue. No music. Camera: handheld",
+      "selectedVersions": [
+        "mv02fq9jysgna"
+      ],
+      "videoModelId": "",
+      "endBeatId": "edb9a2d",
+      "takeTrims": {}
+    },
+    {
+      "id": "kxanypi",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "b",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "Flame pulls open the door, Overlock \"why are you here?\"",
+      "size": "MS",
+      "angle": "eye",
+      "lens": "50mm",
+      "move": "static",
+      "subjects": "Overlock Stitch, Flame",
+      "action": "Flame grips the iron ring and pulls the heavy door open toward herself, swinging it out of the workshop; Overlock stands inside, facing her",
+      "location": "Secret Workshop",
+      "lighting": "",
+      "atmos": "",
+      "audio": "the heavy door groaning on its iron hinges, quiet workshop room tone",
+      "music": null,
+      "refs": [
+        "52u2912",
+        "abh5n7w",
+        "tgirv6n"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "startBeatId": null,
+      "endBeatId": null,
+      "beats": [
+        {
+          "id": "chatk32",
+          "role": "start",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/5c_2new_Flame pulls open door reverse on Overlock.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T15:51:14.171Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        },
+        {
+          "id": "che2eiv",
+          "role": "mid",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "abh5n7w",
+            "line": "What do YOU want?",
+            "delivery": "resigned, tired"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Overlock talk to Flame.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T15:51:59.608Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        }
+      ],
+      "timecodePrompt": "",
+      "videoPromptOverride": "The red-haired woman in the foreground, seen from behind, grips the iron ring and pulls the heavy wooden door open, swinging it out toward the camera. The dark-haired woman in the patchwork coat stands inside the workshop, facing her, and says, resigned and tired: \"What do YOU want?\" Hold the framing, the light and the setting exactly as they are in the start frame, and end on the end frame's composition; keep the camera locked off throughout. Sound: the heavy door groaning on its iron hinges, quiet workshop room tone. No music, no on-screen text.",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv02ilnykppoa",
+          "shotId": "kxanypi",
+          "modelId": "minimax/h3-max/image-to-video",
+          "modelLabel": "MiniMax H3 Max (768P)",
+          "driver": "fal",
+          "seconds": 7,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Flame opens door reveals Overlock.jpg",
+          "endKeyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Overlock talk to Flame.jpg",
+          "billable": true,
+          "estimateUSD": 0.34,
+          "quotedUSD": 0.34,
+          "estimateConfidence": "measured",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5b_INT-Secret-Workshop-Day_H3Max768_mv02ilnykppoa.mp4",
+          "submittedAt": "2026-10-08T21:48:09.646Z",
+          "finishedAt": "2026-10-08T21:48:28.469Z",
+          "elapsedMs": 18814,
+          "prompt": "The door eases open revealing Flame to Overlock who stands inside the workshop. Overlock: (resigned, tired) \"What do YOU want?\" Camera: locked off. no music. Creaking door."
+        }
+      ],
+      "audioClips": [],
+      "selectedVersions": [
+        "mv02ilnykppoa"
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "videoModelId": "",
+      "takeTrims": {
+        "mv02ilnykppoa": {
+          "inSec": 3.95,
+          "outSec": null
+        }
+      }
+    },
+    {
+      "id": "chbkdfv",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "c",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "Flame's questions",
+      "size": "MCU",
+      "angle": "eye",
+      "lens": "50mm",
+      "move": "static",
+      "subjects": "Flame",
+      "action": "Flame presses — is it true, about her dad, and the other thing.",
+      "location": "Secret Workshop",
+      "lighting": "daylight",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "tgirv6n",
+        "52u2912",
+        "qp3gvcm"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "p44umo7",
+          "role": "start",
+          "keyframe": true,
+          "desc": "Flame, chewing the match.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "tgirv6n",
+            "line": "It true?",
+            "delivery": "blunt, curious"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/5c_2new_Flame pulls open door reverse on Overlock.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T12:38:44.689Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          }
+        },
+        {
+          "id": "gy5izmi",
+          "role": "beat",
+          "keyframe": false,
+          "desc": "Flame presses.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "tgirv6n",
+            "line": "About your dad?",
+            "delivery": "blunt"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": null
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv03bnwessbai",
+          "shotId": "chbkdfv",
+          "modelId": "minimax/h3-max/image-to-video",
+          "modelLabel": "MiniMax H3 Max (768P)",
+          "driver": "fal",
+          "seconds": 5,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05d_Flame's questions_matchstick-fix.jpg",
+          "endKeyframePath": null,
+          "billable": true,
+          "estimateUSD": 0.24,
+          "quotedUSD": 0.24,
+          "estimateConfidence": "measured",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5c_INT-Secret-Workshop-Day_H3Max768_mv03bnwessbai.mp4",
+          "submittedAt": "2026-10-08T22:10:45.566Z",
+          "finishedAt": "2026-10-08T22:10:57.337Z",
+          "elapsedMs": 11769,
+          "prompt": "Redhead woman stands in the doorway, staying outside (cockney accent, concerned): \"It true? About your dad?\" camera: locked off. No music."
+        }
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "OTS favoring Flame.",
+      "videoPromptOverride": "Redhead woman stands in the doorway, staying outside (cockney accent, concerned): \"It true? About your dad?\" camera: locked off. No music.",
+      "selectedVersions": [
+        "mv03bnwessbai"
+      ],
+      "videoModelId": "",
+      "takeTrims": {
+        "mv03bnwessbai": {
+          "inSec": 1.7,
+          "outSec": null
+        }
+      }
+    },
+    {
+      "id": "gp1047u",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "d",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "Overlock's answers",
+      "size": "MCU",
+      "angle": "eye",
+      "lens": "50mm",
+      "move": "static",
+      "subjects": "Overlock",
+      "action": "Overlock confirms — bites her lip, nods.",
+      "location": "Secret Workshop",
+      "lighting": "daylight",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "abh5n7w",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "nx9xbz0",
+          "role": "start",
+          "keyframe": true,
+          "desc": "Overlock, caught off guard.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "abh5n7w",
+            "line": "Is what true?",
+            "delivery": "wary"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Overlock talk to Flame.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T12:39:25.764Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          }
+        },
+        {
+          "id": "pai9c3p",
+          "role": "beat",
+          "keyframe": false,
+          "desc": "Overlock nods. Overlock: \"They found my sketchbook, said it was his.\"",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "abh5n7w",
+            "line": "Yeah.",
+            "delivery": "quiet"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": null
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv03h86cgf2l9",
+          "shotId": "gp1047u",
+          "modelId": "minimax/h3-max/image-to-video",
+          "modelLabel": "MiniMax H3 Max (768P)",
+          "driver": "fal",
+          "seconds": 7,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Overlock talk to Flame.jpg",
+          "endKeyframePath": null,
+          "billable": true,
+          "estimateUSD": 0.34,
+          "quotedUSD": 0.34,
+          "estimateConfidence": "measured",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5d_INT-Secret-Workshop-Day_H3Max768_mv03h86cgf2l9.mp4",
+          "submittedAt": "2026-10-08T22:15:05.124Z",
+          "finishedAt": "2026-10-08T22:15:22.667Z",
+          "elapsedMs": 17541,
+          "prompt": "The brunette woman nods, looks down and sighs. Brunette woman (ashamed, anxious): \"They found my sketchbook, said it was his.\" Camera: locked off. no music."
+        }
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "OTS favoring Overlock, reverse of 7d.",
+      "videoPromptOverride": "The brunette woman nods, looks down and sighs. Brunette woman (ashamed, anxious): \"They found my sketchbook, said it was his.\" Camera: locked off. no music.",
+      "selectedVersions": [
+        "mv03h86cgf2l9"
+      ],
+      "takeTrims": {
+        "mv03h86cgf2l9": {
+          "inSec": 3.16,
+          "outSec": null
+        }
+      },
+      "videoModelId": ""
+    },
+    {
+      "id": "7stokxj",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "e",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "Flame asks Overlock what's she going to do",
+      "size": "MS",
+      "angle": "eye",
+      "lens": "50mm",
+      "move": "static",
+      "subjects": "",
+      "action": "",
+      "location": "Secret Workshop",
+      "lighting": "",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "52u2912",
+        "tgirv6n",
+        "abh5n7w"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "startBeatId": null,
+      "endBeatId": null,
+      "beats": [
+        {
+          "id": "aanbel9",
+          "role": "start",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05d_Flame's questions_matchstick-fix.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T12:41:24.512Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        }
+      ],
+      "timecodePrompt": "",
+      "videoPromptOverride": "Medium shot at eye level, cinematic period drama with gritty 19th-century fairytale realism. In the foreground on the left, a dark-haired woman with her hair in a messy bun and a patchwork jacket stands with her back to camera, still and silent, facing an open doorway. In the doorway, the short red-haired woman with an unlit matchstick in her mouth in a torn hooded vest with a bandolier of matchsticks across her chest holds her place on the threshold, keeps her hard stare on the woman in the foreground and speaks to her. The heavy wooden door on the right stays still, held open towards the outside. The red-haired woman says, in a deep female voice with a cockney accent, grim and pointed: \"His Highness'll never let him see daylight again. What're you gonna do?\" After the line she holds the stare and waits for an answer. Hold the framing, the candlelight and the setting exactly as they are in the start frame; keep the camera locked off throughout. Sound: only her voice in the quiet room and a faint shift of leather as she moves. No music, no on-screen text.",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv2hn0ar387gy",
+          "shotId": "7stokxj",
+          "modelId": "minimax/h3-max/reference-to-video",
+          "modelLabel": "MiniMax H3 Max — references (768P)",
+          "driver": "fal",
+          "seconds": 6,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05d_Flame's questions_matchstick-fix.jpg",
+          "endKeyframePath": null,
+          "referencePaths": [
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Overlock_Stitch_turnaround.jpg",
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/props/Overlock face closeup turnaround.jpg",
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Flame_turnaround.jpg",
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Flame face closeup turnaround.jpg",
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/locations/Workshop_DAY_plate.jpg"
+          ],
+          "referenceLabels": [
+            {
+              "ref": "Image 1",
+              "label": "Overlock Stitch (character)"
+            },
+            {
+              "ref": "Image 2",
+              "label": "Overlock Stitch — Turnaround Face closeups (character)"
+            },
+            {
+              "ref": "Image 3",
+              "label": "Flame (character)"
+            },
+            {
+              "ref": "Image 4",
+              "label": "Flame — Face Closeups (character)"
+            },
+            {
+              "ref": "Image 5",
+              "label": "Secret Workshop — day master (wide) (location)"
+            }
+          ],
+          "referencePrompt": "Image 1 is Overlock Stitch (character). Image 2 is Overlock Stitch — Turnaround Face closeups (character). Image 3 is Flame (character). Image 4 is Flame — Face Closeups (character). Image 5 is Secret Workshop — day master (wide) (location). Keep every person and place consistent with their reference images; do not restyle them. Keep this exact young woman: identical pale oval face, grey-blue eyes, dark arched brows, a small mole on her left cheek, black hair in a loose messy bun stuck with sewing pins, a few loose strands at the temples. Patchwork jacket and long skirt of grey, beige and taupe linen with frayed raw edges, a grey fabric sash tied at the waist, a cream tape measure draped around her neck, worn brown ankle boots. Do not change her appearance or wardrobe in any way. Keep this exact young woman: identical freckled face, pale green-grey eyes, a hard level stare, a choppy copper-red shag haircut with jagged bangs, a wooden matchstick held in the corner of her mouth. Tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks across her chest, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, tall scuffed brown boots. Do not change her appearance or wardrobe in any way. The video opens exactly on the start image: one continuous shot, no cuts.\n\nMedium shot at eye level, cinematic period drama with gritty 19th-century fairytale realism. In the foreground on the left, a dark-haired woman with her hair in a messy bun and a patchwork jacket stands with her back to camera, still and silent, facing an open doorway. In the doorway, the short red-haired woman with an unlit matchstick in her mouth in a torn hooded vest with a bandolier of matchsticks across her chest holds her place on the threshold, keeps her hard stare on the woman in the foreground and speaks to her. The heavy wooden door on the right stays still, held open towards the outside. The red-haired woman says, in a deep female voice with a cockney accent, grim and pointed: \"His Highness'll never let him see daylight again. What're you gonna do?\" After the line she holds the stare and waits for an answer. Hold the framing, the candlelight and the setting exactly as they are in the start frame; keep the camera locked off throughout. Sound: only her voice in the quiet room and a faint shift of leather as she moves. No music, no on-screen text.",
+          "billable": true,
+          "estimateUSD": 0.3,
+          "quotedUSD": 0.3,
+          "estimateConfidence": "estimated",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5e_INT-Secret-Workshop-Day_H3MaxRef768_mv2hn0ar387gy.mp4",
+          "submittedAt": "2026-10-10T14:27:01.827Z",
+          "finishedAt": "2026-10-10T14:27:31.723Z",
+          "elapsedMs": 29893,
+          "prompt": "Image 1 is Overlock Stitch (character). Image 2 is Overlock Stitch — Turnaround Face closeups (character). Image 3 is Flame (character). Image 4 is Flame — Face Closeups (character). Image 5 is Secret Workshop — day master (wide) (location). Keep every person and place consistent with their reference images; do not restyle them. Keep this exact young woman: identical pale oval face, grey-blue eyes, dark arched brows, a small mole on her left cheek, black hair in a loose messy bun stuck with sewing pins, a few loose strands at the temples. Patchwork jacket and long skirt of grey, beige and taupe linen with frayed raw edges, a grey fabric sash tied at the waist, a cream tape measure draped around her neck, worn brown ankle boots. Do not change her appearance or wardrobe in any way. Keep this exact young woman: identical freckled face, pale green-grey eyes, a hard level stare, a choppy copper-red shag haircut with jagged bangs, a wooden matchstick held in the corner of her mouth. Tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks across her chest, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, tall scuffed brown boots. Do not change her appearance or wardrobe in any way. The video opens exactly on the start image: one continuous shot, no cuts.\n\nMedium shot at eye level, cinematic period drama with gritty 19th-century fairytale realism. In the foreground on the left, a dark-haired woman with her hair in a messy bun and a patchwork jacket stands with her back to camera, still and silent, facing an open doorway. In the doorway, the short red-haired woman with an unlit matchstick in her mouth in a torn hooded vest with a bandolier of matchsticks across her chest holds her place on the threshold, keeps her hard stare on the woman in the foreground and speaks to her. The heavy wooden door on the right stays still, held open towards the outside. The red-haired woman says, in a deep female voice with a cockney accent, grim and pointed: \"His Highness'll never let him see daylight again. What're you gonna do?\" After the line she holds the stare and waits for an answer. Hold the framing, the candlelight and the setting exactly as they are in the start frame; keep the camera locked off throughout. Sound: only her voice in the quiet room and a faint shift of leather as she moves. No music, no on-screen text.",
+          "expandedPrompt": "subject_definitions:\n<Subject 1> is the young woman in <Picture 1> and <Picture 2>, with a pale oval face, grey-blue eyes, dark arched brows, a small mole on her left cheek, and black hair in a loose messy bun stuck with sewing pins. She wears a patchwork jacket and long skirt of grey, beige, and taupe linen with frayed raw edges, a grey fabric sash, a cream tape measure around her neck, and worn brown ankle boots.\n<Subject 2> is the woman in <Picture 3> and <Picture 4>, with a freckled face, pale green-grey eyes, a hard level stare, and a choppy copper-red shag haircut with jagged bangs. She holds a wooden matchstick in the corner of her mouth and wears a tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks, a wide brown leather belt, torn dark trousers, fingerless arm guards, and tall scuffed brown boots.\n<Subject 3> is the Secret Workshop shown in <Picture 5>, a 19th-century stone room with stone walls, a wooden sewing machine, shelves with fabric, a workbench with a flickering candle, and a heavy wooden door.\n\nsummary:\n[reference generation + audio reference] The target video shows a continuous medium shot of two women in a gritty workshop where <Subject 2> speaks to <Subject 1> while standing in a doorway.\n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - her facial features, hair, and patchwork attire are kept identical to the reference images.\n<Subject 2> (appears in [Shot 1]): fully_preserved - her freckles, matchstick, and layered attire are maintained.\n<Subject 3> (appears in [Shot 1]): fully_preserved - the workshop environment and lighting remain consistent.\n\ndetailed_description:\nThe video style is a cinematic period drama with gritty 19th-century fairytale realism, captured in a static medium shot at eye level. \n[Shot 1] The video opens exactly on the first frame, establishing a high-tension atmosphere. In the foreground on the left, <Subject 1> stands with her back to the camera, still and silent, facing an open doorway. In the doorway on the right, <Subject 2> stands on the threshold, holding a hard stare on <Subject 1> with a wooden matchstick held in the corner of her mouth. The heavy wooden door is held open, revealing a glimpse of the outside while the interior is lit by flickering candlelight from a workbench. <Subject 2> (S2) speaks in a deep female voice with a cockney accent, grim and pointed: <d>English>\"His Highness'll never let him see daylight again. What're you gonna do?\"</d> After delivering the line, <Subject 2> maintains her intense stare and waits for a reaction. The camera remains locked off throughout the entire 6-second duration, preserving the framing and the atmospheric candlelight effect.\n\noverall_soundscape:\nThe room is quiet, with only the sound of <Subject 2>'s deep, raspy voice and the faint, subtle creak of leather as she shifts her weight slightly.\n\nnon_diegetic_music:\nN/A"
+        }
+      ],
+      "audioClips": [],
+      "selectedVersions": [
+        "mv2hn0ar387gy"
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "",
+      "videoModelId": "",
+      "videoPromptMode": null,
+      "takeTrims": {
+        "mv2hn0ar387gy": {
+          "inSec": 1.1,
+          "outSec": 6.1
+        }
+      }
+    },
+    {
+      "id": "abks9ly",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "f",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "The plan — episode button/cliffhanger",
+      "size": "CU",
+      "angle": "eye",
+      "lens": "85mm",
+      "move": "push-in",
+      "subjects": "Overlock",
+      "action": "Overlock states her plan, flat and resolved.",
+      "location": "Secret Workshop",
+      "lighting": "daylight",
+      "atmos": "",
+      "audio": "",
+      "music": null,
+      "refs": [
+        "abh5n7w",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "469x2m7",
+          "role": "mid",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Overlock talk to Flame.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T16:41:54.784Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        },
+        {
+          "id": "647sjse",
+          "role": "mid",
+          "keyframe": true,
+          "desc": "",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": null,
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05g_new_Overlock says her plan.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T16:54:14.752Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          },
+          "nanoOverride": "",
+          "gptOverride": ""
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv03foqeozalu",
+          "shotId": "abks9ly",
+          "modelId": "minimax/h3-max/image-to-video",
+          "modelLabel": "MiniMax H3 Max (768P)",
+          "driver": "fal",
+          "seconds": 9,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05c_new_Overlock talk to Flame.jpg",
+          "endKeyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05g_new_Overlock says her plan.jpg",
+          "billable": true,
+          "estimateUSD": 0.43,
+          "quotedUSD": 0.43,
+          "estimateConfidence": "measured",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5f_INT-Secret-Workshop-Day_H3Max768_mv03foqeozalu.mp4",
+          "submittedAt": "2026-10-08T22:13:53.270Z",
+          "finishedAt": "2026-10-08T22:14:17.140Z",
+          "elapsedMs": 23867,
+          "prompt": "Brunette woman looks at her feet and takes a breath. She looks up again at the redhead. CUT TO CLOSE UP. She furrows her brows. Brunette woman: \"I’m going to break into the Emperor’s Palace and I'm going to free my father.\" Camera: locked down. no music."
+        }
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "This is the episode's cliffhanger line — the hardest push-in of the scene.",
+      "videoPromptOverride": "Brunette woman looks at her feet and takes a breath. She looks up again at the redhead. CUT TO CLOSE UP. She furrows her brows. Brunette woman: \"I’m going to break into the Emperor’s Palace and I'm going to free my father.\" Camera: locked down. no music.",
+      "selectedVersions": [
+        "mv03foqeozalu"
+      ],
+      "takeTrims": {
+        "mv03foqeozalu": {
+          "inSec": 0,
+          "outSec": null
+        }
+      },
+      "videoModelId": ""
+    },
+    {
+      "id": "91i61ht",
+      "sceneId": "71wtbmt",
+      "sceneNum": "2",
+      "shotCode": "g",
+      "intext": "INT.",
+      "loc": "Secret Workshop",
+      "time": "DAY",
+      "label": "Flame laughs — ‘Cool.’ (episode out)",
+      "size": "CU",
+      "angle": "eye",
+      "lens": "85mm",
+      "move": "static",
+      "subjects": "Flame",
+      "action": "Flame laughs.",
+      "location": "Secret Workshop",
+      "lighting": "daylight",
+      "atmos": "",
+      "audio": "laugh",
+      "music": null,
+      "refs": [
+        "tgirv6n",
+        "52u2912"
+      ],
+      "treatments": [],
+      "custom": "",
+      "inheritStart": false,
+      "beats": [
+        {
+          "id": "p0sz40u",
+          "role": "start",
+          "keyframe": true,
+          "desc": "Flame laughs.",
+          "size": "",
+          "angle": "",
+          "lens": "",
+          "move": "",
+          "dialogue": {
+            "charId": "tgirv6n",
+            "line": "Cool.",
+            "delivery": "delighted, deadpan"
+          },
+          "audio": "",
+          "music": null,
+          "treatments": [],
+          "durationSec": null,
+          "frame": {
+            "path": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05h_Flame reaction shot_less acute left gaze.jpg",
+            "approved": true,
+            "generatedAt": "2026-09-29T12:56:39.880Z",
+            "driver": "manual",
+            "model": "nano-banana"
+          }
+        }
+      ],
+      "timecodePrompt": "",
+      "blocking": null,
+      "versions": [
+        {
+          "id": "mv2j2ez14y2x3",
+          "shotId": "91i61ht",
+          "modelId": "minimax/h3-max/reference-to-video",
+          "modelLabel": "MiniMax H3 Max — references (768P)",
+          "driver": "fal",
+          "seconds": 6,
+          "keyframePath": "Fashion Heist (sample)/S1E1 The Workshop/03_storyboard/05h_Flame reaction shot_less acute left gaze.jpg",
+          "endKeyframePath": null,
+          "referencePaths": [
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Flame_turnaround.jpg",
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Flame face closeup turnaround.jpg",
+            "Fashion Heist (sample)/S1E1 The Workshop/02_assets/locations/Workshop_DAY_plate.jpg"
+          ],
+          "referenceLabels": [
+            {
+              "ref": "Image 1",
+              "label": "Flame (character)"
+            },
+            {
+              "ref": "Image 2",
+              "label": "Flame — Face Closeups (character)"
+            },
+            {
+              "ref": "Image 3",
+              "label": "Secret Workshop — day master (wide) (location)"
+            }
+          ],
+          "referencePrompt": "Image 1 is Flame (character). Image 2 is Flame — Face Closeups (character). Image 3 is Secret Workshop — day master (wide) (location). Keep every person and place consistent with their reference images; do not restyle them. Keep this exact young woman: identical freckled face, pale green-grey eyes, a hard level stare, a choppy copper-red shag haircut with jagged bangs, a wooden matchstick held in the corner of her mouth. Tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks across her chest, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, tall scuffed brown boots. Do not change her appearance or wardrobe in any way. The video opens exactly on the start image: one continuous shot, no cuts.\n\nClose-up, eye level, 85mm telephoto: the freckled young woman with choppy copper-red hair and an unlit wooden matchstick in the corner of her mouth, leaning in a doorframe with her hand gripping the frame at the right edge of frame, breaks from her sly half-smile into a genuine laugh. Her shoulders shake and her eyes crinkle while the matchstick stays clamped in the corner of her lips. Then she settles into a straight, level stare into the lens. 0.0 to 1.5s: she laughs openly, head tipping slightly. 1.5 to 3.0s: the laugh fades and her face goes flat and serious, eyes locked forward. 3.0 to 4.5s: she says, delighted but deadpan, in a London cockney accent: \"Cool.\" 4.5 to 6.0s: she holds the deadpan stare, perfectly still except for breathing. Keep her face, hair, matchstick, ragged clothing and bandolier exactly as in the start frame. Hold the framing, the warm backlight and the setting exactly as they are in the start frame; keep the camera locked off throughout. Sound: her short, throaty laugh, then her single spoken word, with quiet room tone. No music, no on-screen text.",
+          "billable": true,
+          "estimateUSD": 0.29,
+          "quotedUSD": 0.29,
+          "estimateConfidence": "estimated",
+          "actualUSD": null,
+          "state": "done",
+          "error": null,
+          "path": "Fashion Heist (sample)/S1E1 The Workshop/05_delivery/takes/5g_INT-Secret-Workshop-Day_H3MaxRef768_mv2j2ez14y2x3.mp4",
+          "submittedAt": "2026-10-10T15:07:00.301Z",
+          "finishedAt": "2026-10-10T15:07:22.639Z",
+          "elapsedMs": 22324,
+          "prompt": "Image 1 is Flame (character). Image 2 is Flame — Face Closeups (character). Image 3 is Secret Workshop — day master (wide) (location). Keep every person and place consistent with their reference images; do not restyle them. Keep this exact young woman: identical freckled face, pale green-grey eyes, a hard level stare, a choppy copper-red shag haircut with jagged bangs, a wooden matchstick held in the corner of her mouth. Tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks across her chest, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, tall scuffed brown boots. Do not change her appearance or wardrobe in any way. The video opens exactly on the start image: one continuous shot, no cuts.\n\nClose-up, eye level, 85mm telephoto: the freckled young woman with choppy copper-red hair and an unlit wooden matchstick in the corner of her mouth, leaning in a doorframe with her hand gripping the frame at the right edge of frame, breaks from her sly half-smile into a genuine laugh. Her shoulders shake and her eyes crinkle while the matchstick stays clamped in the corner of her lips. Then she settles into a straight, level stare into the lens. 0.0 to 1.5s: she laughs openly, head tipping slightly. 1.5 to 3.0s: the laugh fades and her face goes flat and serious, eyes locked forward. 3.0 to 4.5s: she says, delighted but deadpan, in a London cockney accent: \"Cool.\" 4.5 to 6.0s: she holds the deadpan stare, perfectly still except for breathing. Keep her face, hair, matchstick, ragged clothing and bandolier exactly as in the start frame. Hold the framing, the warm backlight and the setting exactly as they are in the start frame; keep the camera locked off throughout. Sound: her short, throaty laugh, then her single spoken word, with quiet room tone. No music, no on-screen text.",
+          "expandedPrompt": "subject_definitions:\n<Subject 1> is the young woman Flame from <Image 1> and <Image 2>, featuring a freckled face, pale green-grey eyes, a hard level stare, and a choppy copper-red shag haircut with jagged bangs. She wears a wooden wooden matchstick in the corner of her mouth, a tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, and tall scuffed brown boots.\n<Subject 2> is the Secret Workshop location from <Image 3>, a rustic stone room with stone walls, wooden beams, a sewing machine, and sunlight streaming through a small window.\n\nsummary:\n[reference generation + audio reuse] The target video starts from the first frame and shows <Subject 1> transitioning from a laugh to a deadpan delivery. \n\nretention_analysis:\n<Subject 1> (appears in [Shot 1]): fully_preserved - her facial features, hair, clothing, and matchstick remain identical to the references.\n<Subject 2> (appears in [Shot 1]): fully_preserved - the workshop environment and lighting remain consistent with the reference image.\n\ndetailed_description:\nThe video is shot in a cinematic 85mm telephoto close-up at eye level, maintaining a warm backlit atmosphere. The camera remains locked off for the entire six-second duration with no cuts.\n[Shot 1] At 00:00.000, the video opens exactly on the first frame: <Subject 1> is leaning against a doorframe, her hand gripping the wood at the right edge of the frame. She begins with a sly half-smile that quickly breaks into a genuine, open laugh. Her shoulders shake and her eyes crinkle, while the wooden matchstick remains firmly clamped in the corner of her lips. Her head tips back slightly during the laughter. At 00:01.500, the laugh fades gradually; her expression melts as her face goes flat and serious, her eyes locking directly onto the lens with a level stare. At 00:03.000, <Subject 1> (S1) speaks with a delighted but deadpan delivery in a London cockney accent: <d>[English]Cool.</d>. From 00:04.500 to 00:06.000, she holds this deadpan stare, perfectly still except for the subtle movement of her chest from breathing. The background <Subject 2> remains soft, with the warm sunlight consistent throughout.\n\noverall_soundscape:\nThe audio features the sound of a short, throaty laugh followed by the single spoken word \"Cool,\" all set against a quiet, natural room tone of the stone workshop.\n\nnon_diegetic_music:\nN/A"
+        }
+      ],
+      "imgDone": false,
+      "vidDone": true,
+      "notes": "Final beat of the episode — button out on Flame's reaction.",
+      "videoPromptOverride": "Close-up, eye level, 85mm telephoto: the freckled young woman with choppy copper-red hair and an unlit wooden matchstick in the corner of her mouth, leaning in a doorframe with her hand gripping the frame at the right edge of frame, breaks from her sly half-smile into a genuine laugh. Her shoulders shake and her eyes crinkle while the matchstick stays clamped in the corner of her lips. Then she settles into a straight, level stare into the lens. 0.0 to 1.5s: she laughs openly, head tipping slightly. 1.5 to 3.0s: the laugh fades and her face goes flat and serious, eyes locked forward. 3.0 to 4.5s: she says, delighted but deadpan, in a London cockney accent: \"Cool.\" 4.5 to 6.0s: she holds the deadpan stare, perfectly still except for breathing. Keep her face, hair, matchstick, ragged clothing and bandolier exactly as in the start frame. Hold the framing, the warm backlight and the setting exactly as they are in the start frame; keep the camera locked off throughout. Sound: her short, throaty laugh, then her single spoken word, with quiet room tone. No music, no on-screen text.",
+      "selectedVersions": [
+        "mv2j2ez14y2x3"
+      ],
+      "takeTrims": {},
+      "videoModelId": "",
+      "videoPromptMode": null
+    }
+  ],
+  "assets": [
+    {
+      "id": "en16pg2",
+      "type": "character",
+      "name": "Bobbin (hummingbird)",
+      "file": "Bobbin turnaround 1.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Bobbin turnaround 1.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact hummingbird: identical iridescent emerald-green head and back, a ruby-red throat, a pale grey-white breast, bronze-brown wing feathers, a long thin black bill, small dark eyes. Real hummingbird size and proportions. Do not change its appearance in any way.",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "52u2912",
+      "type": "location",
+      "name": "Secret Workshop — day master (wide)",
+      "file": "Workshop_DAY_plate.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/locations/Workshop_DAY_plate.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "ectbcxo",
+      "type": "prop",
+      "name": "rusty scissors",
+      "file": "Vintage Rusted Tailor Shears.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/props/Vintage Rusted Tailor Shears.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "81rpfg7",
+      "type": "prop",
+      "name": "rat",
+      "file": "rat.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/props/rat.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "a0mzbmw",
+      "type": "prop",
+      "name": "bread",
+      "file": "crust of bread.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/props/crust of bread.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "92sl5dl",
+      "type": "prop",
+      "name": "fly",
+      "file": "Housefly Macro Cutout.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/props/Housefly Macro Cutout.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "tgirv6n",
+      "type": "character",
+      "name": "Flame",
+      "file": "Flame_turnaround.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Flame_turnaround.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact young woman: identical freckled face, pale green-grey eyes, a hard level stare, a choppy copper-red shag haircut with jagged bangs, a wooden matchstick held in the corner of her mouth. Tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks across her chest, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, tall scuffed brown boots. Do not change her appearance or wardrobe in any way.",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "nt9hwgt",
+      "type": "location",
+      "name": "Secret Workshop — window CU insert",
+      "file": "Workshop_window_CU_from_inside2.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/locations/Workshop_window_CU_from_inside2.jpg",
+      "approved": false,
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": ""
+    },
+    {
+      "id": "qp3gvcm",
+      "type": "prop",
+      "name": "Matchstick (prop sheet)",
+      "file": "match_prop_sheet.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/props/match_prop_sheet.jpg",
+      "approved": false,
+      "angle": "sheet",
+      "derivedFrom": null,
+      "identityHold": "",
+      "driftNotes": "",
+      "voice": "",
+      "aliases": [],
+      "tags": []
+    },
+    {
+      "id": "w51z4mj",
+      "type": "character",
+      "name": "Flame",
+      "file": "Flame face closeup turnaround.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Flame face closeup turnaround.jpg",
+      "approved": false,
+      "angle": "Face Closeups",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact young woman: identical freckled face, pale green-grey eyes, a hard level stare, a choppy copper-red shag haircut with jagged bangs, a wooden matchstick held in the corner of her mouth. Tattered black sleeveless tunic over a ragged sand-brown long-sleeved shirt, a diagonal bandolier of matchsticks across her chest, a wide brown leather belt, torn dark trousers, fingerless wrapped arm guards, tall scuffed brown boots. Do not change her appearance or wardrobe in any way.",
+      "driftNotes": "",
+      "voice": "",
+      "aliases": [],
+      "tags": []
+    },
+    {
+      "id": "idhsgn1",
+      "type": "character",
+      "name": "Bobbin (hummingbird)",
+      "file": "Bobbin turnaround in flight.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Bobbin turnaround in flight.jpg",
+      "approved": false,
+      "angle": "In flight",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact hummingbird: identical iridescent emerald-green head and back, a ruby-red throat, a pale grey-white breast, bronze-brown wing feathers, a long thin black bill, small dark eyes. Real hummingbird size and proportions. Do not change its appearance in any way.",
+      "driftNotes": "",
+      "voice": "",
+      "aliases": [],
+      "tags": []
+    },
+    {
+      "approved": true,
+      "id": "abh5n7w",
+      "type": "character",
+      "name": "Overlock Stitch",
+      "file": "Overlock_Stitch_turnaround.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Overlock_Stitch_turnaround.jpg",
+      "angle": "",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact young woman: identical pale oval face, grey-blue eyes, dark arched brows, a small mole on her left cheek, black hair in a loose messy bun stuck with sewing pins, a few loose strands at the temples. Patchwork jacket and long skirt of grey, beige and taupe linen with frayed raw edges, a grey fabric sash tied at the waist, a cream tape measure draped around her neck, worn brown ankle boots. Do not change her appearance or wardrobe in any way.",
+      "driftNotes": "",
+      "voice": "",
+      "aliases": []
+    },
+    {
+      "approved": true,
+      "id": "ns7kar3",
+      "type": "character",
+      "name": "Overlock Stitch",
+      "file": "Overlock face closeup turnaround.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Overlock face closeup turnaround.jpg",
+      "angle": "Turnaround Face closeups",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact young woman: identical pale oval face, grey-blue eyes, dark arched brows, a small mole on her left cheek, black hair in a loose messy bun stuck with sewing pins, a few loose strands at the temples. Patchwork jacket and long skirt of grey, beige and taupe linen with frayed raw edges, a grey fabric sash tied at the waist, a cream tape measure draped around her neck, worn brown ankle boots. Do not change her appearance or wardrobe in any way.",
+      "driftNotes": "",
+      "voice": "",
+      "aliases": [],
+      "tags": []
+    },
+    {
+      "approved": true,
+      "id": "a3in0de",
+      "type": "character",
+      "name": "Overlock Stitch",
+      "file": "Overlock turnaround faces only.jpg",
+      "path": "Fashion Heist (sample)/S1E1 The Workshop/02_assets/characters/Overlock turnaround faces only.jpg",
+      "angle": "Overlock faces and expressions turnaround",
+      "derivedFrom": null,
+      "identityHold": "Keep this exact young woman: identical pale oval face, grey-blue eyes, dark arched brows, a small mole on her left cheek, black hair in a loose messy bun stuck with sewing pins, a few loose strands at the temples. Patchwork jacket and long skirt of grey, beige and taupe linen with frayed raw edges, a grey fabric sash tied at the waist, a cream tape measure draped around her neck, worn brown ankle boots. Do not change her appearance or wardrobe in any way.",
+      "driftNotes": "",
+      "voice": "",
+      "aliases": [],
+      "tags": []
+    }
+  ],
+  "timeline": {
+    "fps": 24,
+    "audioCues": [],
+    "tracks": [
+      {
+        "id": "V1",
+        "kind": "video",
+        "name": "Picture",
+        "clips": []
+      },
+      {
+        "id": "A1",
+        "kind": "audio",
+        "name": "Dialogue",
+        "clips": []
+      },
+      {
+        "id": "A2",
+        "kind": "audio",
+        "name": "SFX",
+        "clips": []
+      },
+      {
+        "id": "A3",
+        "kind": "audio",
+        "name": "Music",
+        "clips": []
+      }
+    ]
+  },
+  "exports": [],
+  "ledger": {
+    "budgetCapUSD": 25,
+    "confirmAboveUSD": 2,
+    "spentUSD": 0,
+    "entries": []
+  },
+  "jobs": [],
+  "defaultVideoModelId": "minimax/h3-max/image-to-video",
+  "claude": {
+    "drafts": {},
+    "proposals": {},
+    "assets": {}
+  },
+  "updatedAt": "2026-10-12T16:04:27.786Z"
+}
