@@ -11,6 +11,19 @@ sound, and a timeline you can finish in DaVinci Resolve.
 > **Alpha.** Built for one filmmaker's real production and now shared. It works, it's tested
 > (600+ automated checks), and it has rough edges. macOS is the only system tested so far.
 
+## Easiest way to install (Mac, no Terminal needed)
+
+1. On this page, click the green **Code** button → **Download ZIP**. Open the ZIP to unpack it.
+2. Open the unpacked folder and double-click **Install and Open Red Clover Studio**.
+   The first time, macOS may say it can't verify the file: right-click it → **Open** → **Open**.
+3. If it says you need **Node.js**, it opens the download page. Install it, then double-click
+   the file again.
+4. The first run installs the app's parts (about a minute) and opens Red Clover Studio in your
+   browser. Next time, just double-click the same file. Keep its window open while you work.
+
+Video tools (**ffmpeg**) are needed for trimming, thumbnails and export. The app opens without
+them; see Install below to add them. For developers, the command-line route is below.
+
 ## What it does
 
 **Pre-production — the Vault**
@@ -54,7 +67,7 @@ You need **macOS**, **[Node.js 22 or newer](https://nodejs.org)** and
 **[ffmpeg](https://ffmpeg.org)** (`brew install ffmpeg`).
 
 ```bash
-git clone https://github.com/<you>/red-clover-studio.git
+git clone https://github.com/ShawnTheWriter/red-clover-studio.git
 cd red-clover-studio
 npm install
 npm start
