@@ -4,7 +4,9 @@
 Script in, finished cut out: cast and locations, storyboards, video takes, a playable rough cut,
 sound, and a timeline you can finish in DaVinci Resolve.
 
-<!-- DEMO VIDEO: replace with the promo clip once it exists -->
+[![Watch the 57-second demo](docs/promo-poster.jpg)](https://github.com/ShawnTheWriter/red-clover-studio/releases/download/v0.1.0-alpha/red-clover-studio-promo.mp4)
+
+*Click the picture to watch the 57-second demo.*
 
 > **Alpha.** Built for one filmmaker's real production and now shared. It works, it's tested
 > (600+ automated checks), and it has rough edges. macOS is the only system tested so far.
