@@ -8,6 +8,18 @@ sound, and a timeline you can finish in DaVinci Resolve.
 
 *Click the picture to watch the 57-second demo.*
 
+**Full walkthrough (8 min):** install, then every stage of a real production, narrated.
+
+[![Watch the 8-minute walkthrough](docs/walkthrough-poster.jpg)](https://github.com/ShawnTheWriter/red-clover-studio/releases/download/v0.1.0-alpha/red-clover-studio-walkthrough.mp4)
+
+<details><summary>Chapters</summary>
+
+0:00 Free, no subscription · 0:18 Install · 0:30 The Library · 0:54 Connect your services ·
+2:00 Script in · 2:32 The Vault · 3:28 Keyframes to video · 4:23 Your budget, enforced ·
+4:54 Pick and trim · 5:27 Rough cut and sound · 6:40 Film out · 6:50 Remaster · 7:45 Wrap-up
+
+</details>
+
 > **Alpha.** Built for one filmmaker's real production and now shared. It works, it's tested
 > (600+ automated checks), and it has rough edges. macOS is the only system tested so far.
 
@@ -24,42 +36,124 @@ sound, and a timeline you can finish in DaVinci Resolve.
 Video tools (**ffmpeg**) are needed for trimming, thumbnails and export. The app opens without
 them; see Install below to add them. For developers, the command-line route is below.
 
-## What it does
+## A tour, script to screen
 
-**Pre-production — the Vault**
-- Upload a screenplay (.fdx, .fountain or .txt). Scenes, characters and props are read from it.
-- One card per character, location and prop, with every angle and outfit you add. An *identity
-  hold* per card keeps a face or a set the same from shot to shot.
-- Series vault: cards, style and settings carry across every episode of a series.
-- Optional Claude helpers draft shot lists, identity holds and prompts. You always edit and
-  approve; nothing is applied on its own.
+Screens are from the sample's parent production, *Fashion Heist* S1E1: 41 shots, every video take
+made in the app, **$53.99** in API spend against a $60 cap (that figure is the app's ledger,
+checked against the real fal bill).
 
-**Production — the board**
-- A contact sheet of every shot, scene by scene. Drag to reorder shots and scenes.
-- Storyboards per shot (generate, upload or pull a frame from a clip), reference images, and an
-  optional reference video (Blender previs, grey-box, an earlier take) to steer the camera.
-- Pick a video model with short rows of choices: model, mode, tier, quality, service. Each
-  choice shows its price per second.
-- The prompt you see is exactly the prompt that's sent.
+### The Library
 
-**Post-production**
-- A playable rough cut of the whole episode, with storyboards holding the place of shots not
-  yet made. Trim any take and the cut follows.
-- Dialogue (your own voice performances turned into character voices), sound effects, room tone,
-  lip sync.
-- Export to DaVinci Resolve (FCPXML, with scene bins), OpenTimelineIO or a CapCut-ready folder.
-- Bring your Resolve edit back in: organise the files to match it, or start a higher-quality
-  *remaster* of the cut.
+![Library](docs/tour/00-library.jpg)
+
+Where you start. Every production, series and episode in one place, each with a still from its own
+assets. Start a new production or episode, or start a *remaster* from a Resolve cut (step 9).
+
+### 1. Connect your services
+
+![Connect services](docs/tour/01-connections.jpg)
+
+Add keys for the services you want, in one place: fal for video (MiniMax, Seedance, Kling, Wan),
+GPT Image, lip sync and sound effects; Atlas Cloud for Seedance at Atlas's prices; Google Gemini
+for Nano Banana stills; ElevenLabs for voices; Anthropic or OpenRouter for the Claude helpers.
+Keys stay on your computer and the app only ever shows their last four characters.
+
+A price watch checks live prices every six hours, so quotes and your cap use current numbers.
+
+**Cheapest route.** If two services you've connected sell the exact same model (same mode, tier and
+quality), each take goes through the cheaper one at that moment, using live prices where the service
+publishes them, and the quote shows the saving before you pay ("sent via Atlas at $0.330/s instead of
+fal at $0.466/s"). It only compares like for like, never swaps one model for another, only uses services
+you've connected, and records which route each take took. On by default; the CHEAPEST chip turns it off.
+Today that covers Seedance 2.5 on fal and Atlas Cloud; new service adapters join automatically.
+
+### 2. Script in, shot list out
+
+![Provisional shot list](docs/tour/02-shot-list.jpg)
+
+Upload a screenplay (.fdx, .fountain or .txt). The app reads the scenes from its sluglines, plus
+the characters, locations and props. A Claude helper can draft a provisional shot list per scene
+(the Fashion Heist one cost $0.06), and a *what's missing* check compares the script with the
+cards you already have. You edit and approve; nothing is applied on its own.
+
+### 3. The Vault: one card per character, location and prop
+
+![Identity vault](docs/tour/03-vault.jpg)
+
+Face and full-body turnarounds, locations from several angles and times of day, props. Generate
+them here or upload images from anywhere (ChatGPT, Midjourney, your own photos). Each card gets
+an **identity hold**, a short description that the prompt helpers use to reinforce the reference
+image, so a face or a set stays the same from shot to shot. In a series, the vault carries over to
+every episode.
+
+### 4. The board: storyboards and keyframes
+
+![Production board](docs/tour/04-board.jpg)
+
+Every shot on one contact sheet, scene by scene, with a running count of boards and takes done.
+Each shot can have a single keyframe or a first and last frame. Generate a few stills, pick your
+start and end, or upload your own. Add reference images, or a reference video (Blender previs,
+grey-box, an earlier take) to steer the camera.
+
+### 5. Takes, priced before you click
+
+![Model picker](docs/tour/05-model-picker.jpg)
+
+Choose the model, mode, tier and quality from short rows of choices. Every choice shows its price
+per second, and the shot's quote is up front, based on duration, model and quality. The prompt you
+see is exactly the prompt that's sent. Each take adds to the running total in the corner. Set a
+**budget cap** for the episode: the app blocks anything that would go over it until you raise the
+cap yourself.
+
+### 6. Pick the take, mark the part you want
+
+![Takes and trim](docs/tour/06-trim.jpg)
+
+Compare a shot's takes, select the one you prefer, and mark in and out points so only that part
+goes to the cut and the timeline. Undo (⌘Z) never discards a take you paid for.
+
+### 7. Sound: dialogue, effects, room tone
+
+![Dialogue](docs/tour/07-dialogue.jpg)
+
+Every line of dialogue, by character. If a take's generated voice is wrong or drifts between
+shots, swap it for the character's ElevenLabs voice, re-voice it from the take, remove the line, or
+upload a recording (a voice actor, or you) and run a lip-sync pass. Add sound effects per shot
+(several models, Kling by default) and room tone per scene from what's happening in it: rain,
+city, a quiet workshop.
+
+### 8. Rough cut and export
+
+![Rough cut](docs/tour/09-rough-cut.jpg)
+
+Play the whole episode as a rough assembly, with storyboards holding the places of shots not made
+yet. When it's right, export:
+
+![Timeline and export](docs/tour/08-export.jpg)
+
+- **DaVinci Resolve**: an FCPXML timeline, with your media sorted into scene bins.
+- **OpenTimelineIO**, or a **CapCut-ready folder**.
+
+### 9. Remaster: prove it cheap, finish it premium
+
+Make the whole episode first on a cheaper model (MiniMax H3 costs a fraction of Seedance 2.5),
+cut it in Resolve, then bring the Resolve timeline back as a **remaster**. The app knows exactly
+which clips you used and how long each one is, so you regenerate only those shots, at only those
+lengths, on the premium model. You pay premium prices for the finished cut, not for every
+experiment.
 
 ## What it costs
 
 The app is free. Video, images, voices and the Claude helpers come from services you connect
-with your own API keys, and you pay them directly. The app never marks up a price.
+with your own API keys, and you pay them directly, at their prices. The app never marks up a
+price. There's no subscription to the app and no monthly credit allowance to use up before it
+resets.
 
 - **Every paid action shows its price first**, and anything over your threshold asks you to
   confirm the exact amount.
 - **A spending cap per episode** that the app enforces.
-- A cost record of every take, and a price watch that tells you when a model you use gets cheaper.
+- **A receipt for every take**: model, seconds, cost. The episode total is always in the corner.
+- **A price watch** that tells you when a model you use gets cheaper.
 
 ## Install
 
@@ -113,7 +207,8 @@ Library → + Remaster from a Resolve cut.
 
 ## Status and known gaps
 
-- Tested on macOS with Chrome. Windows and Linux: untested.
+- Tested on macOS with Chrome. Windows and Linux: untested. **Windows testers wanted**: if you can try
+  it, please open an issue with what happened.
 - Some prices are estimates until a real bill comes back; those are marked "~" in the app.
 - Modules (reusable shot recipes, previz and looks, shareable with other creators) have their
   places in the app but are not built yet.
