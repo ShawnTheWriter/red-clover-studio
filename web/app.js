@@ -1667,7 +1667,22 @@ function pickBest(models, want) {
   const score = (m) => (m.family === want.family ? 1000 : 0) + (m.mode === want.mode ? 100 : 0) + ((m.tier || null) === (want.tier || null) ? 30 : 0) + ((m.res || null) === (want.res || null) ? 10 : 0) + ((m.via || "fal") === (want.via || "fal") ? 3 : 0) + (m.id.includes("@") ? 0 : 1);
   return [...models].sort((a, b) => score(b) - score(a))[0];
 }
+// Cheapest route (2026-10-13): the server may send a take through another
+// connected service that sells the same model for less. The quote says so.
+let CHEAPEST_ROUTE = null; // null until /api/settings answers; the server default is on
+function loadRouteSetting() { if (CHEAPEST_ROUTE == null) api("/api/settings").then((s) => { CHEAPEST_ROUTE = s.cheapestRoute !== false; }).catch(() => {}); }
+const viaName = (id) => { const m = MODELS && MODELS.video && MODELS.video.find((x) => x.id === id); const v = (m && m.via) || "fal"; return v === "atlas" ? "Atlas" : v; };
+function routeNote(q) {
+  const moved = (q.lines || []).filter((l) => l.routedFrom);
+  if (!moved.length) return null;
+  const l = moved[0];
+  const text = moved.length === 1 && q.lines.length === 1
+    ? `Cheapest route: sent via ${viaName(l.modelId)} at $${l.rate.toFixed(3)}/s instead of ${viaName(l.routedFrom)} at $${l.pickedRate.toFixed(3)}/s (saves ~$${q.routedSavingUSD.toFixed(2)}).`
+    : `Cheapest route: ${moved.length} of ${q.lines.length} clips go through a cheaper connected service (saves ~$${q.routedSavingUSD.toFixed(2)}).`;
+  return Object.assign(el("div", "mini"), { textContent: text, title: "Same model, another aggregator you've connected. Turn this off in the VIA row of the model picker.", style: "margin-top:2px" });
+}
 function videoModelPicker(models, curId, onPick) {
+  loadRouteSetting();
   const cur = models.find((m) => m.id === curId) || models[0];
   const box = el("div", "rc-vpick");
   const ready = (via) => { const d = MODELS && MODELS.drivers && MODELS.drivers[via]; return !d || d.ready; };
@@ -1706,7 +1721,17 @@ function videoModelPicker(models, curId, onPick) {
   }));
   // Via: only when more than one service sells this exact combination
   const vias = inTier.filter((m) => m.res === cur.res);
-  if (vias.length > 1) rowOf("VIA", vias.map((m) => chip(`${(m.via || "fal") === "atlas" ? "Atlas" : "fal"} ${pickEst(m)}${pickMoney(m)}`, m.id === cur.id, m, ready(m.via || "fal") ? "" : `Connect ${m.via} in Connections first`)));
+  if (vias.length > 1) {
+    const auto = el("button", "rc-chip" + (CHEAPEST_ROUTE !== false ? " on" : ""), "CHEAPEST");
+    auto.title = "On: each take goes through whichever connected service sells this exact model for less right now (live prices where the price watch has them). Off: always the service picked here.";
+    auto.onclick = async () => {
+      try {
+        const r = await post("/api/settings/cheapest-route", { on: CHEAPEST_ROUTE === false });
+        CHEAPEST_ROUTE = r.cheapestRoute; onPick(cur.id);
+      } catch (e) { fail(e); }
+    };
+    rowOf("VIA", [auto, ...vias.map((m) => chip(`${(m.via || "fal") === "atlas" ? "Atlas" : "fal"} ${pickEst(m)}${pickMoney(m)}`, m.id === cur.id, m, ready(m.via || "fal") ? "" : `Connect ${m.via} in Connections first`))]);
+  }
   if (!ready(cur.via || "fal")) box.append(el("div", "rc-muted warn", `${cur.via === "atlas" ? "Atlas Cloud" : cur.via} isn't connected — add its key in Connections (⚙︎) before generating.`));
   return box;
 }
@@ -1929,6 +1954,7 @@ function videoGeneratePane(shot) {
         qRow.append(Object.assign(el("span", "pill" + (q.fitsInBudget ? "" : " warn")), { textContent: `est. $${q.totalUSD.toFixed(2)}` }));
         if (!q.fitsInBudget) qRow.append(Object.assign(el("span", "pill warn"), { textContent: `over budget — $${q.ledger.remainingUSD.toFixed(2)} left` }));
         quoteHost.append(qRow);
+        const rn = routeNote(q); if (rn) quoteHost.append(rn);
         if (q.uncalibrated.length) {
           quoteHost.append(Object.assign(el("div", "mini"), { textContent: "Estimate only — this model bills in units fal can't quote before a run.", style: "color:var(--warn);margin-top:2px" }));
         }
@@ -1938,7 +1964,7 @@ function videoGeneratePane(shot) {
         genBtn.style.marginTop = "6px";
         genBtn.onclick = async () => {
           if (q.needsConfirmation) {
-            const ok = confirm(`Generate 1 clip on ${model.label}?\n\nEstimated cost: $${q.totalUSD.toFixed(2)}\nBudget left after: $${(q.ledger.remainingUSD - q.totalUSD).toFixed(2)}\n\nProceed?`);
+            const ok = confirm(`Generate 1 clip on ${q.lines[0] ? q.lines[0].modelLabel : model.label}?\n\nEstimated cost: $${q.totalUSD.toFixed(2)}\nBudget left after: $${(q.ledger.remainingUSD - q.totalUSD).toFixed(2)}\n\nProceed?`);
             if (!ok) return;
           }
           genBtn.disabled = true; genBtn.textContent = "Submitting…";
@@ -3644,6 +3670,7 @@ async function refreshQuote(box, card, led) {
     if (!q.fitsInBudget) row.append(Object.assign(el("span", "pill warn"), { textContent: `over budget — $${q.ledger.remainingUSD.toFixed(2)} left` }));
     if (q.needsConfirmation && q.fitsInBudget) row.append(Object.assign(el("span", "pill warn"), { textContent: "needs confirmation" }));
     host.append(row);
+    const rn = routeNote(q); if (rn) host.append(rn);
 
     if (q.uncalibrated.length) {
       host.append(Object.assign(el("div", "mini"), {

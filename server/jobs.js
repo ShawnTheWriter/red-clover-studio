@@ -19,7 +19,8 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import * as store from "./store.js";
-import { estimateVideoUSD, videoModel, estimateImageUSD, imageModel, estimateLipsyncUSD, lipsyncModel, LIPSYNC_SYNC_MODES, modelShort, referenceUSD, refVideoUSD } from "./rates.js";
+import { estimateVideoUSD, videoModel, estimateImageUSD, imageModel, estimateLipsyncUSD, lipsyncModel, LIPSYNC_SYNC_MODES, modelShort, referenceUSD, refVideoUSD, cheapestRoute } from "./rates.js";
+import { readSettings } from "./settings.js";
 import { FalDriver } from "./drivers/fal.js";
 import { GeminiDriver } from "./drivers/gemini.js";
 import { ReplicateDriver } from "./drivers/replicate.js";
@@ -181,8 +182,14 @@ export function billableSeconds(modelId, seconds) {
 // Price a fan-out without committing to it. This is what the UI shows and what
 // the human confirms, so it must be computed by exactly the same code the
 // submit path uses to check the cap.
-export function quote(ep, { shotIds, modelIds, seconds }) {
+// Cheapest route is on unless the creator switched it off (settings.json
+// "cheapestRoute": false). A service counts only if its driver is ready.
+export const cheapestRouteOn = () => readSettings().cheapestRoute !== false;
+const routeReady = (via) => { const d = drivers[via]; return !!d && d.status().ready; };
+
+export function quote(ep, { shotIds, modelIds, seconds, route = cheapestRouteOn() }) {
   const lines = [];
+  let routedSavingUSD = 0;
   for (const shotId of shotIds) {
     // "target": each shot's own length from the Resolve cut (remaster
     // episodes), snapped up to a length the model sells like any request.
@@ -195,7 +202,10 @@ export function quote(ep, { shotIds, modelIds, seconds }) {
         throw Object.assign(new Error(`${code} has no target length from the cut — pick a duration for it by hand`), { status: 400 });
       }
     }
-    for (const modelId of modelIds) {
+    for (const pickedId of modelIds) {
+      // The pick can be sold cheaper by another connected service.
+      const rt = route ? cheapestRoute(pickedId, routeReady) : { modelId: pickedId, routed: false };
+      const modelId = rt.modelId;
       const m = videoModel(modelId);
       // A target from the cut goes to the model's nearest sellable length.
       const secs = billableSeconds(modelId, seconds === "target" && m ? nearestSellable(m.durations, want) : want);
@@ -218,6 +228,11 @@ export function quote(ep, { shotIds, modelIds, seconds }) {
         estimateUSD: round2(est.usd + refUSD),
         confidence: est.confidence,
         rate: est.rate,
+        ...(rt.routed ? (() => {
+          const was = estimateVideoUSD(pickedId, secs);
+          routedSavingUSD += Math.max(0, was.usd - est.usd);
+          return { routedFrom: pickedId, routedFromLabel: (videoModel(pickedId) || {}).label || pickedId, pickedRate: was.rate };
+        })() : {}),
       });
     }
   }
@@ -228,6 +243,8 @@ export function quote(ep, { shotIds, modelIds, seconds }) {
     lines,
     totalUSD,
     clips: lines.length,
+    cheapestRoute: !!route,
+    routedSavingUSD: round2(routedSavingUSD),
     uncalibrated,
     ledger: led,
     fitsInBudget: totalUSD <= led.remainingUSD,
@@ -355,6 +372,7 @@ function commitFanOut(ep, { shotIds, modelIds, seconds, driver: requested = "fal
       modelId: line.modelId,
       modelLabel: line.modelLabel,
       driver,
+      ...(line.routedFrom ? { routedFrom: line.routedFrom } : {}),
       seconds: line.seconds,
       keyframePath: keyframe ? keyframe.path : null,
       endKeyframePath: endFrame ? endFrame.path : null,

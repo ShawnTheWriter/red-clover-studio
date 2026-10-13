@@ -627,3 +627,39 @@ export function convertFalPrice(modelId, unit, unitPrice, kind = "video") {
   if (c.tokensPerVideoSecond && /^1000 tokens$/.test(u)) return unitPrice * c.tokensPerVideoSecond / 1000;
   return null;
 }
+
+// ---------- cheapest route (Shawn, 2026-10-13) ----------
+//
+// The same model can be sold by more than one connected aggregator (today:
+// Seedance 2.5 on fal and on Atlas Cloud). With "cheapest route" on, a take is
+// sent through whichever CONNECTED service sells that exact combination
+// (family, mode, tier, quality) for less right now: live prices from the price
+// watch where there are any, the table's figures otherwise. A promo on fal
+// shows up through the live price; a service with no key is never chosen. A
+// route has to be cheaper by more than half a percent to move the take, so a
+// tie keeps what was picked.
+const ROUTE_MARGIN = 0.005;
+const routeKey = (m) => [m.family, m.mode, m.tier || "", m.res || ""].join("|");
+
+export function routeSiblings(modelId) {
+  const m = videoModel(modelId);
+  if (!m || !m.family) return m ? [m] : [];
+  const k = routeKey(m);
+  return VIDEO_MODELS.filter((x) => routeKey(x) === k);
+}
+
+// isReady(via) -> bool: whether that service is connected. Returns the chosen
+// row id plus every option considered, so the quote can say why.
+export function cheapestRoute(modelId, isReady = () => true) {
+  const m = videoModel(modelId);
+  if (!m) return { modelId, routed: false, options: [] };
+  const options = routeSiblings(modelId).map((x) => ({ id: x.id, via: x.via || "fal", rate: effectiveVideoRate(x), live: liveRate(x.id) != null, ready: !!isReady(x.via || "fal") }));
+  const mine = options.find((o) => o.id === modelId);
+  const ready = options.filter((o) => o.ready);
+  const cheapest = ready.reduce((a, o) => (!a || o.rate < a.rate ? o : a), null);
+  // Nothing connected: keep the pick (the submit then says what to connect).
+  // The pick is connected: move only for a real saving. It isn't: cheapest
+  // connected route.
+  const best = !cheapest ? mine : mine.ready && cheapest.rate >= mine.rate * (1 - ROUTE_MARGIN) ? mine : cheapest;
+  return { modelId: best.id, routed: best.id !== modelId, from: modelId, options };
+}

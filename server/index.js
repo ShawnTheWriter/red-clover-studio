@@ -37,7 +37,7 @@ import * as pricewatch from "./pricewatch.js";
 import * as roomtone from "./roomtone.js";
 import * as soundcut from "./soundcut.js";
 import * as sfx from "./sfx.js";
-import { SUGGESTED_ROOT, SETTINGS_FILE } from "./settings.js";
+import { SUGGESTED_ROOT, SETTINGS_FILE, writeSettings } from "./settings.js";
 import { SIZES, LENSES, ANGLES, MOVES, DELIVERY, TREATMENTS } from "../shared/grammar.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -54,7 +54,14 @@ const edit = (dir, fn) => store.withEpisode(dir, fn, { history: true });
 
 // First run / settings: the projects folder. Changing it needs the page's own
 // header (like the key routes) so another website can't repoint the app.
-r.get("/api/settings", () => ({ root: store.ROOT, rootFromEnv: store.ROOT_FROM_ENV, suggestedRoot: SUGGESTED_ROOT, settingsFile: SETTINGS_FILE }));
+r.get("/api/settings", () => ({ root: store.ROOT, rootFromEnv: store.ROOT_FROM_ENV, suggestedRoot: SUGGESTED_ROOT, settingsFile: SETTINGS_FILE, cheapestRoute: jobs.cheapestRouteOn() }));
+// Cheapest route on/off (default on): send each take through whichever
+// connected service sells that exact model for less (rates.js cheapestRoute).
+r.post("/api/settings/cheapest-route", async ({ body, req }) => {
+  requireUI(req);
+  writeSettings({ cheapestRoute: body.on === false ? false : null });
+  return { cheapestRoute: jobs.cheapestRouteOn() };
+});
 r.post("/api/settings/root", async ({ body, req }) => {
   requireUI(req);
   if (store.ROOT_FROM_ENV) throw Object.assign(new Error("RCS_PROJECT_ROOT is set for this server, so the folder can't be changed here."), { status: 409 });
