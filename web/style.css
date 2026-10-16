@@ -242,6 +242,11 @@ body.rc .undo-float{bottom:42px;right:16px;font-family:var(--mono);font-size:11p
 .rc-insp{overflow:auto;padding:16px 18px 80px}
 .rc-h1{display:flex;justify-content:space-between;color:var(--dim);letter-spacing:1px;font-family:var(--mono);font-size:11px}
 .rc-h2{font:500 15px/1.3 var(--sans);color:#fff;margin:4px 0 14px}
+.rc-name{margin:4px 0 14px}
+.rc-name input.rc-h2{width:100%;box-sizing:border-box;margin:0;margin-left:0;border:1px dashed var(--line);padding:5px 8px}
+.rc-name input.rc-h2:focus{border-style:solid}
+.rc-name input.rc-h2::placeholder{color:var(--dim);font-style:italic}
+.rc-namehint{font:11px/1.3 var(--sans);color:var(--dim);margin-top:4px}
 .rc-flow{display:grid;grid-template-columns:minmax(0,1fr) 28px 132px;align-items:center;font-family:var(--mono);font-size:11px;margin-bottom:12px}
 .rc-flow .ins{display:flex;flex-direction:column;gap:8px}
 .rc-flow .node{border:1px solid var(--line);background:var(--panel);padding:7px;cursor:pointer}
@@ -536,3 +541,28 @@ body.rc-lib main{grid-template-rows:56px minmax(0,1fr)}
 .rc-libnav button.on{color:var(--fg,#eee);border-color:var(--line)}
 .rc-modtypes{display:flex;flex-direction:column;gap:2px;margin:12px 0}
 .rc-samplelink{margin:18px 0 8px}
+
+/* Folds and the inspector bar (2026-10-17): everything in the production window can be closed, visibly. */
+.rc-fold{border:1px solid var(--line);border-radius:6px;margin:8px 0}
+.rc-fold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 10px;font-family:var(--mono);font-size:11px;letter-spacing:.5px;min-width:0}
+.rc-fold>summary::-webkit-details-marker{display:none}
+.rc-fold>summary::before{content:"▸";color:var(--faint)}
+.rc-fold[open]>summary::before{content:"▾";color:var(--acc)}
+.rc-fold>summary .t{color:var(--ink);font-weight:600;white-space:nowrap}
+.rc-fold>summary .s{flex:1;min-width:0;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;letter-spacing:0}
+.rc-fold>summary .x{flex:none;color:var(--dim);border:1px solid var(--line);border-radius:4px;padding:1px 7px;font-size:10px}
+.rc-fold>summary .x::after{content:"OPEN"}
+.rc-fold[open]>summary .x::after{content:"CLOSE"}
+.rc-fold>summary:hover .x{color:var(--ink);border-color:var(--acc)}
+.rc-fold>.rc-foldb{padding:4px 10px 10px}
+.rc-secbar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;gap:4px;padding:6px 0;margin:8px 0 0;background:var(--bg);border-bottom:1px solid var(--line)}
+.rc-secbar .rc-closeall{margin-left:auto}
+.rc-closesec{display:block;width:100%;margin-top:10px;padding:6px;font-family:var(--mono);font-size:10px;letter-spacing:.6px;color:var(--dim);background:none;border:1px solid var(--line);border-radius:4px;cursor:pointer}
+.rc-closesec:hover{color:var(--ink);border-color:var(--acc)}
+
+/* A take that is queued or running: red, softly pulsing, so a submitted take cannot be missed. */
+.rc-legacy .pill.live,.pill.live{background:rgba(214,60,80,.18);border-color:#d63c50;color:#ff8a98;animation:rcLive 1.6s ease-in-out infinite}
+.ver-block.ver-live{box-shadow:inset 3px 0 0 #d63c50;animation:rcLiveRow 1.6s ease-in-out infinite}
+@keyframes rcLive{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes rcLiveRow{0%,100%{background:rgba(214,60,80,.10)}50%{background:rgba(214,60,80,.02)}}
+@media (prefers-reduced-motion:reduce){.pill.live,.ver-block.ver-live{animation:none}}

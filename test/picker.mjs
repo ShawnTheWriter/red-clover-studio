@@ -36,7 +36,7 @@ check("Seedance 2.5 1080p ≈ 2.25× 720p (token formula)", Math.abs(m("bytedanc
 check("Seedance 2.0 references: 9 images, 3 videos, no task field", m("bytedance/seedance-2.0/reference-to-video").maxRefs === 9 && m("bytedance/seedance-2.0/reference-to-video").refVideo.max === 3 && m("bytedance/seedance-2.0/reference-to-video").noTask);
 check("Atlas rows keep their service and put the resolution in Atlas's fields", m("atlas:bytedance/seedance-2.5/image-to-video@1080p").driver === "atlas" && m("atlas:bytedance/seedance-2.5/image-to-video@1080p").atlas.fixed.resolution === "1080p" && !m("atlas:bytedance/seedance-2.5/image-to-video@1080p").fixedParams);
 check("file-name codes are distinct", new Set(V.map((x) => x.short)).size === V.length);
-check("labels read Model (tier) — mode (quality) · service", m("bytedance/seedance-2.0/mini/reference-to-video@480p").label === "Seedance 2.0 Mini — references (480p)" && m("atlas:bytedance/seedance-2.5/image-to-video@480p").label === "Seedance 2.5 (480p) · Atlas");
+check("labels read Model (tier) — mode (quality) · service", m("bytedance/seedance-2.0/mini/reference-to-video@480p").label === "Seedance 2.0 Mini — references (480p)" && m("atlas:bytedance/seedance-2.5/image-to-video@480p").label === "Seedance 2.5 (480p draft) · Atlas");
 check("price watch converts a variant with its own factor", Math.abs(R.convertFalPrice("minimax/h3-max/image-to-video@1080P", "seconds", 0.05) - 0.16) < 1e-9 && Math.abs(R.convertFalPrice("bytedance/seedance-2.0/image-to-video@480p", "1000 tokens", 0.014) - 0.1345) < 0.001);
 
 console.log("\nreference image limit per model");

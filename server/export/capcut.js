@@ -29,7 +29,10 @@ export function buildEditSheet(clipsByTrack, opts = {}) {
   v1.forEach((c, i) => {
     const dur = clipDurationSec(c);
     running += dur;
-    const numbered = `${String(i + 1).padStart(2, "0")}_${path.basename(c.sourcePath)}`;
+    // A take cut into several pieces is ONE file: every piece's row names the
+    // numbered copy made for the first piece.
+    const firstIdx = v1.findIndex((x) => x.sourcePath === c.sourcePath && x.versionId === c.versionId);
+    const numbered = `${String((firstIdx >= 0 ? firstIdx : i) + 1).padStart(2, "0")}_${path.basename(c.sourcePath)}`;
     const suggestedHead = c.headTrimSec ? `${c.headTrimSec.toFixed(2)}s` : "0.5–2s — untrimmed, check ramp-up";
     const suggestedTail = c.tailTrimSec ? `${c.tailTrimSec.toFixed(2)}s` : "0s";
     lines.push(`| ${i + 1} | ${numbered} | ${dur.toFixed(2)}s | ${suggestedHead} | ${suggestedTail} | ${c.name || ""} |`);
@@ -82,8 +85,14 @@ export function buildEditSheet(clipsByTrack, opts = {}) {
 // this module doesn't touch the filesystem itself, store.js does, keeping the
 // path-safety boundary in one place.
 export function orderedCopyPlan(clipsByTrack) {
-  return (clipsByTrack.V1 || []).map((c, i) => ({
-    from: c.sourcePath,
-    toName: `${String(i + 1).padStart(2, "0")}_${path.basename(c.sourcePath)}`,
-  }));
+  const v1 = clipsByTrack.V1 || [];
+  // One copy per file: a take cut into several pieces is copied once, under the
+  // number of its first piece (the edit sheet's rows point at that copy).
+  return v1
+    .map((c, i) => ({ c, i }))
+    .filter(({ c, i }) => v1.findIndex((x) => x.sourcePath === c.sourcePath && x.versionId === c.versionId) === i)
+    .map(({ c, i }) => ({
+      from: c.sourcePath,
+      toName: `${String(i + 1).padStart(2, "0")}_${path.basename(c.sourcePath)}`,
+    }));
 }

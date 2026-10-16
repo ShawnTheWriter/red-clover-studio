@@ -499,6 +499,9 @@ export function newTimelineClip(partial = {}) {
     tailTrimSec: partial.tailTrimSec ?? 0,
     startSec: partial.startSec ?? 0,        // position on the timeline
     text: partial.text || "",               // dialogue line / sfx description, for the audio cue sheet
+    // A take with cut-outs makes several clips from one file: which piece this
+    // is (0-based) and how many there are. Absent on an ordinary clip.
+    ...(partial.spanCount > 1 ? { spanIndex: partial.spanIndex ?? 0, spanCount: partial.spanCount } : {}),
   };
 }
 

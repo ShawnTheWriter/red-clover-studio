@@ -101,8 +101,13 @@ await d.generateVideo({ imagePath: img, endImagePath: img, aspectRatio: "9:16", 
 const t3 = seen.submits[2];
 check("Seedance frames: first_frame + last_frame, adaptive ratio, 720p, audio on", t3.model === "byteplus/dreamina-seedance-2-5-260628" && t3.body.content.map((c) => c.role).join() === ",first_frame,last_frame" && t3.body.ratio === "adaptive" && t3.body.resolution === "720p" && t3.body.generate_audio === true, JSON.stringify(t3.body).slice(0, 300));
 
+await d.generateVideo({ imagePath: img, aspectRatio: "9:16", prompt: "turn", seconds: 5, modelId: SD, audio: false });
+check("Seedance sound off: generate_audio false in the body; the row has the sound switch", seen.submits[seen.submits.length - 1].body.generate_audio === false && videoModel(SD).audioSwitch === true, JSON.stringify(seen.submits[seen.submits.length - 1].body).slice(0, 200));
+await d.generateVideo({ imagePath: img, aspectRatio: "9:16", prompt: "turn", seconds: 5, modelId: H3, audio: false });
+check("H3 on Comfy has no sound switch and ignores audio:false", !videoModel(H3).audioSwitch && seen.submits[seen.submits.length - 1].body.generate_audio === undefined, "");
+
 await d.generateVideo({ referencePaths: [img, img], referenceVideoPaths: [SRC], aspectRatio: "9:16", prompt: "@Image1 walks", seconds: 5, modelId: SDREF });
-const t4 = seen.submits[3].body;
+const t4 = seen.submits[5].body;
 check("Seedance refs: reference_image x2 + reference_video, ratio from the episode", t4.content.filter((c) => c.role === "reference_image").length === 2 && t4.content.filter((c) => c.role === "reference_video").length === 1 && t4.ratio === "9:16", JSON.stringify(t4).slice(0, 300));
 
 statusPlan = ["IN_QUEUE", "IN_PROGRESS", "COMPLETED"]; seen.polls = 0;

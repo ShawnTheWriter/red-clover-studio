@@ -7,7 +7,7 @@
 // regex. A deterministic parser that claimed to nail props would be lying about
 // its own certainty, so the draft is flagged as a draft and nothing else.
 //
-// Real fixtures this was built and tested against: a 10-episode series' combined
+// Real fixtures this was built and tested against: Man in the Glass's combined
 // 10-episode .fdx (mixed-case scene headings, spelled-out act numbers, blank
 // spacer "Scene Heading" paragraphs Final Draft inserts, multi-run Parenthetical
 // text) and Fashion Heist's single-episode .fdx.
@@ -77,7 +77,7 @@ export function parseHeading(raw) {
 }
 
 // Two independent extractors, tuned against real scripts rather than guessed.
-// Checked on both a 10-episode series and a one-episode script: in neither
+// Checked on both Man in the Glass (10 eps) and Fashion Heist S1E1: in neither
 // does ALL-CAPS mark a prop — it marks a character introduction ("MING (38)")
 // or a background/walk-on role ("CAR DRIVER", "POLITE POLICE OFFICER",
 // "SLEEPING MAN"). Bare single-word ALL-CAPS ("SLAMS", "LEFT", "CLICK") is

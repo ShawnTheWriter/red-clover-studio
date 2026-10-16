@@ -10,6 +10,7 @@ import { probe } from "./ffprobe.js";
 import { newTimelineClip, clipDurationSec, beatAudio } from "../shared/schema.js";
 import { roomToneClips } from "./roomtone.js";
 import { dialogueStr } from "../shared/prompts.js";
+import { trimSpans, takeTimeToTimeline } from "../shared/trim.js";
 
 // beatAudio/dialogueStr actually live in schema.js / prompts.js respectively —
 // import dialogueStr from prompts.js to reuse the exact same formatting the
@@ -60,7 +61,7 @@ export async function rebuildFromSelection(ep) {
     if (!primary) continue;
 
     const shotStartSec = cursor;
-    let primaryClip = null;
+    let primaryClip = null, primaryClips = [], primarySpans = [];
 
     for (let i = 0; i < selected.length; i++) {
       const version = (shot.versions || []).find((v) => v.id === selected[i] && v.state === "done" && v.path);
@@ -76,43 +77,82 @@ export async function rebuildFromSelection(ep) {
         probed = await probe(abs);
       }
 
-      const clip = newTimelineClip({
-        id: existing?.id,
-        shotId: shot.id,
-        versionId: version.id,
-        sourcePath: version.path,
-        name: `${shot.sceneNum}${shot.shotCode}${shot.label ? ` — ${shot.label}` : ""}${i > 0 ? ` (alt ${i + 1})` : ""}`,
-        kind: "video",
-        sourceDurationSec: probed.durationSec,
-        headTrimSec: existing?.headTrimSec ?? 0,
-        tailTrimSec: existing?.tailTrimSec ?? 0,
-        startSec: shotStartSec,
-      });
-      // Remaster: a new primary take was generated at the cut's span plus a
-      // handle each end, so its first build is trimmed to the cut's timing —
-      // head = the handle, tail = whatever is left past the span. A clip that
-      // already exists keeps its trims (Shawn may have changed them).
-      const rm = shot.remaster;
-      if (!existing && i === 0 && rm && Number(rm.spanSec) > 0) {
-        const dur = probed.durationSec;
-        const head = Math.min(Number(rm.handlesSec) || 0, dur);
-        clip.headTrimSec = Math.round(head * 1000) / 1000;
-        clip.tailTrimSec = Math.round(Math.max(0, dur - head - Number(rm.spanSec)) * 1000) / 1000;
-      }
-      // A take's own in/out ("use 3–7 s") wins over everything: Shawn set it
-      // on the take, so every rebuild and export follows it.
+      const baseName = `${shot.sceneNum}${shot.shotCode}${shot.label ? ` — ${shot.label}` : ""}${i > 0 ? ` (alt ${i + 1})` : ""}`;
+      // A take's own marks: in/out plus cut-outs. Several kept pieces make
+      // several clips from the same file, back to back from the shot's start.
       const tt = shot.takeTrims && shot.takeTrims[version.id];
-      if (tt) {
-        const t = trimFromInOut(tt, probed.durationSec);
-        clip.headTrimSec = t.headTrimSec;
-        clip.tailTrimSec = t.tailTrimSec;
+      const spans = tt ? trimSpans(tt, probed.durationSec) : null;
+      const made = [];
+
+      if (!spans || spans.length <= 1) {
+        // A clip that was once several pieces must not hand its old trims to
+        // the single clip it has become.
+        const prior = existing && !(existing.spanCount > 1) ? existing : null;
+        const clip = newTimelineClip({
+          id: prior?.id || existing?.id,
+          shotId: shot.id,
+          versionId: version.id,
+          sourcePath: version.path,
+          name: baseName,
+          kind: "video",
+          sourceDurationSec: probed.durationSec,
+          headTrimSec: prior?.headTrimSec ?? 0,
+          tailTrimSec: prior?.tailTrimSec ?? 0,
+          startSec: shotStartSec,
+        });
+        // Remaster: a new primary take was generated at the cut's span plus a
+        // handle each end, so its first build is trimmed to the cut's timing —
+        // head = the handle, tail = whatever is left past the span. A clip that
+        // already exists keeps its trims (Shawn may have changed them).
+        const rm = shot.remaster;
+        if (!prior && i === 0 && rm && Number(rm.spanSec) > 0) {
+          const dur = probed.durationSec;
+          const head = Math.min(Number(rm.handlesSec) || 0, dur);
+          clip.headTrimSec = Math.round(head * 1000) / 1000;
+          clip.tailTrimSec = Math.round(Math.max(0, dur - head - Number(rm.spanSec)) * 1000) / 1000;
+        }
+        // A take's own in/out ("use 3–7 s") wins over everything: Shawn set it
+        // on the take, so every rebuild and export follows it.
+        if (spans && spans.length === 1) {
+          clip.headTrimSec = spans[0].inSec;
+          clip.tailTrimSec = Math.round(Math.max(0, probed.durationSec - spans[0].outSec) * 1000) / 1000;
+        }
+        made.push(clip);
+      } else {
+        let at = shotStartSec;
+        spans.forEach((sp, k) => {
+          const ex = (track.clips || []).find((c) => c.versionId === version.id && c.spanCount > 1 && c.spanIndex === k);
+          made.push(newTimelineClip({
+            id: ex?.id,
+            shotId: shot.id,
+            versionId: version.id,
+            sourcePath: version.path,
+            name: `${baseName} [${k + 1}/${spans.length}]`,
+            kind: "video",
+            sourceDurationSec: probed.durationSec,
+            headTrimSec: sp.inSec,
+            tailTrimSec: Math.round(Math.max(0, probed.durationSec - sp.outSec) * 1000) / 1000,
+            startSec: Math.round(at * 1000) / 1000,
+            spanIndex: k,
+            spanCount: spans.length,
+          }));
+          at += sp.outSec - sp.inSec;
+        });
       }
-      clip.fps = probed.fps || 24;
-      clip.width = probed.width;
-      clip.height = probed.height;
-      clip.hasAudio = probed.hasAudio;
-      (clipsByTrack[track.id] ||= []).push(clip);
-      if (i === 0) primaryClip = clip;
+      for (const clip of made) {
+        clip.fps = probed.fps || 24;
+        clip.width = probed.width;
+        clip.height = probed.height;
+        clip.hasAudio = probed.hasAudio;
+        (clipsByTrack[track.id] ||= []).push(clip);
+      }
+      if (i === 0) {
+        primaryClips = made;
+        primaryClip = made[0];
+        // Where each kept piece sits in the take's own time (for lines that
+        // were voiced from the take).
+        primarySpans = made.map((c) => ({ inSec: c.headTrimSec || 0, outSec: probed.durationSec - (c.tailTrimSec || 0) }));
+      }
     }
 
     // Each line's "Use in edit" recording goes on the Dialogue track (A1). A
@@ -129,7 +169,7 @@ export async function rebuildFromSelection(ep) {
         if (!Number.isFinite(recSec) || recSec <= 0) continue;
         let at = shotStartSec, head = 0;
         if (rec.origin === "take" && Number.isFinite(Number(rec.offsetSec))) {
-          at = shotStartSec + Number(rec.offsetSec) - (primaryClip.headTrimSec || 0);
+          at = takeTimeToTimeline(primarySpans, shotStartSec, Number(rec.offsetSec));
           if (rec.sourceVersionId && rec.sourceVersionId !== primaryClip.versionId) {
             audioCues.push({ kind: "Note", atSec: shotStartSec, shotCode: `${shot.sceneNum}${shot.shotCode}`, text: "Dialogue was voiced from a different take than the one selected — check its sync." });
           }
@@ -157,7 +197,7 @@ export async function rebuildFromSelection(ep) {
       if (a.music && a.music.trim()) audioCues.push({ kind: "Music", atSec: shotStartSec, shotCode: `${shot.sceneNum}${shot.shotCode}`, text: a.music.trim() });
     }
 
-    cursor = shotStartSec + clipDurationSec(primaryClip);
+    cursor = shotStartSec + primaryClips.reduce((t, c) => t + clipDurationSec(c), 0);
   }
 
   for (const t of ep.timeline.tracks) {
@@ -180,6 +220,9 @@ export async function rebuildFromSelection(ep) {
     if (at < c.startSec) { head = c.startSec - at; at = c.startSec; }
     if (head >= t.seconds) continue;
     const clip = newTimelineClip({ shotId: shot.id, sourcePath: t.path, kind: "sfx", name: `${shot.sceneNum}${shot.shotCode} SFX — ${t.label}`, sourceDurationSec: t.seconds, headTrimSec: Math.round(head * 1000) / 1000, startSec: Math.round(at * 1000) / 1000, text: t.prompt });
+    // A take cut into several pieces: each piece carries only its own stretch
+    // of the SFX, so the sound does not run on across a cut-out.
+    if (c.spanCount > 1) clip.tailTrimSec = Math.round(Math.max(0, t.seconds - head - clipDurationSec(c)) * 1000) / 1000;
     clip.hasVideo = false; clip.hasAudio = true; clip.fps = ep.timeline.fps || 24;
     sfxClips.push(clip);
   }

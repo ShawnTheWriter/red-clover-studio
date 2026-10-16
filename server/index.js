@@ -13,7 +13,8 @@ import { probe } from "./ffprobe.js";
 import { execFile } from "node:child_process";
 import { shotPrompts, draftTimecodeText } from "../shared/prompts.js";
 import { videoModelFor, removeAssetKeepRefs } from "../shared/schema.js";
-import { LIPSYNC_MODELS, LIPSYNC_SYNC_MODES } from "./rates.js";
+import { LIPSYNC_MODELS, LIPSYNC_SYNC_MODES, UPSCALE_MODELS, UPSCALE_TARGETS } from "./rates.js";
+import { parseTrimRequest } from "../shared/trim.js";
 import { uid, newShot, newBeat, newAsset, normalizeTags, newScene, newEpisode, renumberScene, moveShotToScene, shiftSceneNumbers, reorderShot, reorderScenes, GATES, ASSET_TYPES, SCHEMA_VERSION } from "../shared/schema.js";
 import { parseScreenplay, sliceEpisode } from "../shared/screenplay.js";
 import { newAssetAudit, matchAssetImages } from "../shared/audit.js";
@@ -102,6 +103,7 @@ r.get("/api/grammar", () => ({
   sizes: SIZES, lenses: LENSES, angles: ANGLES, moves: MOVES,
   delivery: DELIVERY, treatments: TREATMENTS, gates: GATES, assetTypes: ASSET_TYPES,
   lipsyncModels: LIPSYNC_MODELS, lipsyncSyncModes: LIPSYNC_SYNC_MODES,
+  upscaleModels: UPSCALE_MODELS, upscaleTargets: UPSCALE_TARGETS,
 }));
 
 r.get("/api/tree", () => store.scan());
@@ -269,7 +271,7 @@ r.get("/api/screenplay/files", async ({ query }) => ({
 }));
 
 // Parse a script file without saving anything. For a combined multi-episode
-// .fdx (a series can ship all its episodes in one file), pass `episode` to slice
+// .fdx (Man in the Glass ships all ten in one file), pass `episode` to slice
 // one out; omit it to get the whole document's episode boundaries back so the
 // UI can offer a picker.
 r.get("/api/screenplay/parse", async ({ query }) => {
@@ -986,6 +988,37 @@ r.post("/api/episode/lipsync", async ({ body }) =>
     confirmedUSD: body.confirmedUSD,
   }));
 
+// Finish an Atlas 480p draft at 1080p: a NEW take, from the draft's id.
+r.post("/api/episode/finish/quote", async ({ body }) => {
+  const ep = await store.loadEpisode(body.dir);
+  return jobs.quoteFinish(ep, body);
+});
+
+r.post("/api/episode/finish", async ({ body }) =>
+  jobs.submitFinish(body.dir, {
+    versionId: body.versionId,
+    modelId: body.modelId,
+    driver: body.driver || "atlas",
+    confirmedUSD: body.confirmedUSD,
+  }));
+
+// Upscale: a finished take in, a NEW take out. Quote first (the same numbers the
+// spend guards use), then submit.
+r.post("/api/episode/upscale/quote", async ({ body }) => {
+  const ep = await store.loadEpisode(body.dir);
+  return jobs.quoteUpscale(ep, body);
+});
+
+r.post("/api/episode/upscale", async ({ body }) =>
+  jobs.submitUpscale(body.dir, {
+    versionId: body.versionId,
+    modelId: body.modelId,
+    target: body.target || "1080p",
+    useTrim: body.useTrim !== false,
+    driver: body.driver || "fal",
+    confirmedUSD: body.confirmedUSD,
+  }));
+
 // A storyboard frame taken from a take: first frame for a "start" beat, last
 // for "end", middle for "mid". For shots whose video exists but whose board
 // never did (carryovers, imports) — lets them pass board approval honestly.
@@ -1304,6 +1337,7 @@ r.post("/api/episode/fanout", async ({ body }) =>
     seconds: body.seconds,
     driver: body.driver || "fal",
     confirmedUSD: body.confirmedUSD,
+    audio: body.audio,
   }));
 
 // Version tray: every take across the episode, newest first per shot.
@@ -1434,26 +1468,24 @@ r.get("/api/episode/timeline", async ({ query }) => {
 });
 
 // Mark the usable part of a take: { inSec, outSec } in the take's own time
-// (null = its start / end; both null clears the mark). Saved on the shot and
-// applied straight away to the timeline (if one is built), so the next FCPXML
-// carries it without a manual rebuild.
+// (null = its start / end), plus optional `cuts: [{ startSec, endSec }]` removed
+// from inside it (omitted = keep the cuts already stored; [] = clear them).
+// Both in/out null and no cuts clears the marks. Saved on the shot and applied
+// straight away to the timeline (if one is built), so the next FCPXML carries
+// it without a manual rebuild. `spans` in the reply are the kept pieces.
 r.post("/api/episode/take/trim", async ({ body }) =>
   edit(body.dir, async (ep) => {
     const shot = ep.shots.find((s) => s.id === body.shotId);
     const v = shot && (shot.versions || []).find((x) => x.id === body.versionId);
     if (!v || v.state !== "done" || !v.path) throw Object.assign(new Error("finished take not found"), { status: 404 });
-    const num = (x) => (x === null || x === undefined || x === "" ? null : Number(x));
-    const inSec = num(body.inSec), outSec = num(body.outSec);
-    if ([inSec, outSec].some((x) => x !== null && !(Number.isFinite(x) && x >= 0))) throw Object.assign(new Error("in and out must be seconds, 0 or more"), { status: 400 });
     const { durationSec } = await probe(store.safeResolve(v.path));
-    if (inSec !== null && inSec >= durationSec) throw Object.assign(new Error(`in (${inSec}s) is past the end of the take (${durationSec.toFixed(2)}s)`), { status: 400 });
-    if (inSec !== null && outSec !== null && outSec - inSec < 0.1) throw Object.assign(new Error("out must be after in"), { status: 400 });
     shot.takeTrims = shot.takeTrims || {};
-    if (inSec === null && outSec === null) delete shot.takeTrims[v.id];
-    else shot.takeTrims[v.id] = { inSec, outSec: outSec === null ? null : Math.min(outSec, durationSec) };
+    const { trim, spans } = parseTrimRequest(body, durationSec, shot.takeTrims[v.id] || null);
+    if (!trim) delete shot.takeTrims[v.id];
+    else shot.takeTrims[v.id] = trim;
     const built = ((ep.timeline.tracks || []).find((t) => t.id === "V1")?.clips || []).length > 0;
     if (built) await timeline.rebuildFromSelection(ep);
-    return { versionId: v.id, trim: shot.takeTrims[v.id] || null, durationSec, rebuilt: built };
+    return { versionId: v.id, trim: shot.takeTrims[v.id] || null, spans, durationSec, rebuilt: built };
   }));
 
 r.post("/api/episode/timeline/clip/trim", async ({ body }) =>

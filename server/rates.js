@@ -413,6 +413,13 @@ const COORDS = {
   "comfy:byteplus/dreamina-seedance-2-5-260628/reference-to-video": { family: "sd25", mode: "refs", res: "720p", via: "comfy" },
 };
 for (const m of VIDEO_MODELS) Object.assign(m, { tier: null, res: null, via: "fal" }, COORDS[m.id] || {});
+// Atlas takes Seedance's `generate_audio` flag, and the price is the same with
+// or without sound (Atlas: one rate per second). Shawn's first Atlas takes
+// came back with a warbling noise on the sound, so the Generate pane gets an
+// "audio off" switch for these rows (rows without `audioSwitch` ignore it).
+for (const m of VIDEO_MODELS) if (m.driver === "atlas") m.audioSwitch = true;
+// Comfy's Seedance 2.5 rows take the same flag (generate_audio in the request body).
+for (const m of VIDEO_MODELS) if (m.driver === "comfy" && m.comfy && m.comfy.fixed && "generate_audio" in m.comfy.fixed) m.audioSwitch = true;
 
 const SD_TOKENS = { "480p": 9607, "720p": 21600, "1080p": 48600, "4k": 194400 }; // per video second, 24 fps
 const r3 = (n) => Math.round(n * 1000) / 1000;
@@ -480,6 +487,53 @@ for (const tier of ["standard", "fast", "mini"]) for (const mode of ["frames", "
   const b = sd20Base(tier, mode); b.label = pickerLabel(b); VIDEO_MODELS.push(b);
 }
 
+// Seedance 2.0 Fast and Mini on Atlas Cloud (Atlas pages read 2026-10-17; list
+// price per video second, 20% off applied to every Mini and Fast call "automatically,
+// no minimum spend"): Fast 480p $0.0900, 720p $0.1935; Mini 480p $0.0562,
+// 720p $0.1210. Model ids carry a HYPHEN ("seedance-2.0-fast"). Request fields:
+// reference_images (1–9), reference_videos (1–3, 2–15 s, 15 s total), `ratio`
+// (not aspect_ratio), integer duration 4–15, `generate_audio`. About a third
+// below fal's token price for the same model (fal: Fast $0.108 / $0.242, Mini
+// $0.067 / $0.151 at 480p / 720p). Billed by video tokens, so the figures are
+// estimates until a take is billed. Standard Seedance 2.0 is not on Atlas's
+// Mini/Fast pages (fal only). Atlas moderates portraits ("non-compliant content
+// will be blocked"); not yet tried with Shawn's characters on 2.0.
+const ATLAS_SD20 = {
+  fast: { path: "bytedance/seedance-2.0-fast", list: { "480p": 0.09, "720p": 0.1935 }, code: "F" },
+  mini: { path: "bytedance/seedance-2.0-mini", list: { "480p": 0.0562, "720p": 0.121 }, code: "M" },
+};
+const ATLAS_DISCOUNT = 0.8;
+const atlasUSD = (tier, res) => r3(ATLAS_SD20[tier].list[res] * ATLAS_DISCOUNT);
+for (const tier of ["fast", "mini"]) for (const mode of ["frames", "refs"]) {
+  const t = ATLAS_SD20[tier];
+  const b = {
+    id: `atlas:${t.path}/${mode === "refs" ? "reference-to-video" : "image-to-video"}`,
+    driver: "atlas", family: "sd20", mode, tier, res: "720p", via: "atlas",
+    promptStyle: "seedance",
+    short: `SD20${t.code}${mode === "refs" ? "ref" : ""}atl`,
+    usdPerVideoSecond: atlasUSD(tier, "720p"),
+    confidence: "estimated",
+    falUnit: "Atlas: video tokens",
+    audioSwitch: true,
+    note: mode === "refs"
+      ? `Seedance 2.0 ${TIERS[tier]} reference mode through Atlas Cloud: up to 9 images (@Image) and 3 videos (@Video). About a third cheaper than fal.`
+      : `Seedance 2.0 ${TIERS[tier]} through Atlas Cloud: start + end frames, native audio. About a third cheaper than fal.`,
+    durations: range(4, 15), minDuration: 4,
+    ...(mode === "refs"
+      ? {
+          atlas: { model: `${t.path}/reference-to-video`, refImages: "reference_images", refVideos: "reference_videos", fixed: { resolution: "720p", generate_audio: true } },
+          inputMode: "reference", maxRefs: 9,
+          refVideo: { param: "reference_videos", max: 3, minSec: 2, maxSec: 15, totalSec: 15, usdPerSec: atlasUSD(tier, "720p"), confidence: "estimated" },
+        }
+      : {
+          atlas: { model: `${t.path}/image-to-video`, startField: "image", endField: "last_image", fixed: { resolution: "720p", ratio: "adaptive", generate_audio: true } },
+          imageParams: ["image", "last_image"],
+        }),
+  };
+  b.label = pickerLabel(b);
+  VIDEO_MODELS.push(b);
+}
+
 const VARIANTS = [];
 // MiniMax H3 Max, frames: the promo ($0.03 per billed second) runs to Oct 15.
 VARIANTS.push(variant(row("minimax/h3-max/image-to-video"), "480P", { usd: h3maxRate(1.0), conversion: { unitsPerVideoSecond: 1.0 } }));
@@ -505,10 +559,26 @@ for (const [tier, t] of Object.entries(SD20)) for (const mode of ["frames", "ref
     VARIANTS.push(variant(base, res, { usd: mode === "refs" ? r3(out * 1.08) : out, confidence: mode === "refs" ? "uncalibrated" : "estimated", conversion: { tokensPerVideoSecond: SD_TOKENS[res] }, refVideoUsd: out }));
   }
 }
-// Seedance 2.5 on Atlas: "from $0.134/s" (480p) on Atlas's pages; ceilings.
+// Seedance 2.5 on Atlas. The 480p row is a DRAFT (`draft: true`): billed as a
+// normal 480p render and finishable at 1080p within 7 days (see FINISH_MODELS).
+// MEASURED 2026-10-16 against the Atlas balance: $0.1339/s (19 s = $2.5447),
+// $0.1343/s (9 s = $1.2083), $0.1341/s (12 s = $1.6092) → $0.134/s.
+// 1080p stays a ceiling.
+export const ATLAS_DRAFT_USD = 0.134;
 for (const id of ["atlas:bytedance/seedance-2.5/image-to-video", "atlas:bytedance/seedance-2.5/reference-to-video"]) {
-  VARIANTS.push(variant(row(id), "480p", { usd: 0.15, confidence: "uncalibrated", refVideoUsd: 0.14 }));
+  const draft = variant(row(id), "480p", { usd: ATLAS_DRAFT_USD, confidence: "measured", refVideoUsd: 0.14 });
+  draft.draft = true;
+  draft.finishModel = "atlas:bytedance/seedance-2.5/draft-complete";
+  draft.res = "480p draft";
+  draft.atlas = { ...draft.atlas, fixed: { ...draft.atlas.fixed, resolution: "480p", draft: true } };
+  draft.note = "Cheap 480p look (Atlas: about $0.134/s). Finish it at 1080p within 7 days for $0.263/s more: the final keeps the draft's prompt, images, seed and sound.";
+  draft.label = pickerLabel(draft);
+  VARIANTS.push(draft);
   VARIANTS.push(variant(row(id), "1080p", { usd: 0.75, confidence: "uncalibrated", refVideoUsd: 0.70 }));
+}
+for (const tier of ["fast", "mini"]) for (const mode of ["frames", "refs"]) {
+  const id = `atlas:${ATLAS_SD20[tier].path}/${mode === "refs" ? "reference-to-video" : "image-to-video"}`;
+  VARIANTS.push(variant(row(id), "480p", { usd: atlasUSD(tier, "480p"), confidence: "estimated", refVideoUsd: atlasUSD(tier, "480p") }));
 }
 // Comfy Router (pricing page 2026-10-16): H3 2K $0.1859/s; Seedance 2.5 at
 // $0.015301 per 1k tokens (480p/720p) and $0.016731 (1080p).
@@ -520,6 +590,37 @@ VIDEO_MODELS.push(...VARIANTS);
 // Hand-written rows get the picker's label too (their old labels live in
 // git history); conversions for the price watch come from the row itself.
 for (const m of VIDEO_MODELS) m.label = pickerLabel(m);
+
+// Finish a draft: Atlas's `draft-complete` endpoint renders the 1080p final of a
+// completed Seedance 2.5 draft (Atlas model page, read 2026-10-16). It takes
+// only the draft's id: prompt, images, duration, ratio, seed and sound are
+// inherited. 1080p only (no resolution field). A draft can be finished any
+// number of times within 7 days of its creation; each finish is its own paid
+// task. A finished take is made from the draft take (op "finish"), like lip
+// sync and upscale.
+export const FINISH_MODELS = [
+  {
+    id: "atlas:bytedance/seedance-2.5/draft-complete",
+    atlasModel: "bytedance/seedance-2.5/draft-complete",
+    short: "SD25fin", // model code in take file names
+    label: "Finish at 1080p (Atlas)",
+    driver: "atlas",
+    target: "1080p",
+    usdPerVideoSecond: 0.263,
+    confidence: "estimated", // Atlas's page; replace with a measured figure after the first real finish
+    expiresDays: 7,
+    note: "Re-renders the draft at 1080p from the draft's own prompt, images and seed. The composition should hold; faces and small detail are rendered again, so check them.",
+  },
+];
+const FINISH_BY_ID = new Map(FINISH_MODELS.map((m) => [m.id, m]));
+export function finishModel(id) { return FINISH_BY_ID.get(id) || null; }
+export function estimateFinishUSD(modelId, seconds) {
+  const m = finishModel(modelId);
+  if (!m) throw Object.assign(new Error(`unknown finish model "${modelId}" — check rates.js FINISH_MODELS`), { status: 400 });
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n <= 0) throw Object.assign(new Error(`invalid duration ${JSON.stringify(seconds)}`), { status: 400 });
+  return { usd: m.usdPerVideoSecond * n, confidence: m.confidence, rate: m.usdPerVideoSecond };
+}
 
 // Lip-sync models: video + audio in, the same video with the mouth re-timed to
 // the audio out. Billed on the SOURCE take's length. Priced from fal's pricing
@@ -551,6 +652,68 @@ export const LIPSYNC_SYNC_MODES = ["cut_off", "loop", "bounce", "silence", "rema
 const LIPSYNC_BY_ID = new Map(LIPSYNC_MODELS.map((m) => [m.id, m]));
 export function lipsyncModel(id) { return LIPSYNC_BY_ID.get(id) || null; }
 
+// Upscale models: a finished take in, the same take at 1080p out. A NEW take is
+// made from the source (op "upscale"), like lip sync. Prices from fal's pricing
+// API, 2026-10-16. Shawn's side-by-side the same day: SeedVR2 is far sharper
+// than Bytedance on a 480p Seedance draft; Bytedance is about a seventh of the
+// price and much faster.
+//   SeedVR2   $0.001 per megapixel of OUTPUT. Checked against fal's usage CSV
+//             (2026-10-16): the 11 s, 24 fps, 1080x1920 run was billed 548
+//             megapixels = $0.548; the formula (2.0736 MP x 264 frames) gives
+//             547.4 MP. Measured.
+//   Bytedance $0.0072 per second of video at the standard tier (the response
+//             reports the billed duration; the pro tier is 10x and not offered).
+export const UPSCALE_TARGETS = ["1080p"];
+export const UPSCALE_MODELS = [
+  {
+    id: "fal-ai/seedvr/upscale/video",
+    short: "SeedVR2", // model code in take file names
+    label: "SeedVR2 (sharpest)",
+    driver: "fal",
+    billing: "megapixel",
+    usdPerMegapixel: 0.001,
+    confidence: "measured",
+    note: "Rebuilds fine detail: hair, braid, grain. About 8 minutes for 11 s. Billed on output megapixels (checked against fal's bill: $0.548 for 11 s).",
+  },
+  {
+    id: "fal-ai/bytedance-upscaler/upscale/video",
+    short: "BDUp", // model code in take file names
+    label: "Bytedance (fast, cheap)",
+    driver: "fal",
+    billing: "second",
+    usdPerSecond: 0.0072,
+    confidence: "exact",
+    note: "Cleaner but smoother and softer. About 3 minutes for 11 s. Standard tier, AI-video preset.",
+  },
+];
+const UPSCALE_BY_ID = new Map(UPSCALE_MODELS.map((m) => [m.id, m]));
+export function upscaleModel(id) { return UPSCALE_BY_ID.get(id) || null; }
+
+// 1080p means the SHORT edge is 1080: 1080x1920 vertical, 1920x1080 landscape.
+// A source within 1% of 16:9 (480x854 is 1.779) snaps to exactly 16:9.
+export function upscaleOutputSize(width, height, target = "1080p") {
+  const short = Number(String(target).replace(/p$/i, ""));
+  if (!Number.isFinite(short) || short <= 0) throw Object.assign(new Error(`unknown upscale target "${target}"`), { status: 400 });
+  const portrait = height >= width;
+  let ratio = Math.max(width, height) / Math.min(width, height);
+  if (Math.abs(ratio - 16 / 9) / (16 / 9) < 0.01) ratio = 16 / 9;
+  const long = Math.round(short * ratio / 2) * 2;
+  return portrait ? { width: short, height: long } : { width: long, height: short };
+}
+
+export function estimateUpscaleUSD(modelId, { seconds, fps = 24, target = "1080p" } = {}) {
+  const m = upscaleModel(modelId);
+  if (!m) throw Object.assign(new Error(`unknown upscale model "${modelId}" — check rates.js UPSCALE_MODELS`), { status: 400 });
+  const n = Number(seconds);
+  if (!Number.isFinite(n) || n <= 0) throw Object.assign(new Error(`invalid duration ${JSON.stringify(seconds)}`), { status: 400 });
+  if (m.billing === "second") return { usd: m.usdPerSecond * n, confidence: m.confidence, rate: m.usdPerSecond };
+  // Ceiling: a 16:9 frame at the target's short edge, at the take's frame rate.
+  const f = Number(fps) || 24;
+  const size = upscaleOutputSize(9, 16, target);
+  const mp = (size.width * size.height) / 1e6;
+  return { usd: m.usdPerMegapixel * mp * f * n, confidence: m.confidence, rate: m.usdPerMegapixel * mp * f };
+}
+
 // Reference-image tokens for a "frames+refs" model: each image is billed at
 // w x h / 1024 tokens; the first refFreeTokens per request are free. Images are
 // sent at <=1280 px on the long side, so a missing size is costed as 1280x720.
@@ -573,7 +736,7 @@ export function referenceUSD(modelId, sizes = []) {
 // Short model code for a take's file name ("H3Max768", "SD25"). Unknown ids
 // fall back to a cleaned label so a new model still gets a readable name.
 export function modelShort(id, label = "") {
-  const m = VIDEO_MODELS.find((x) => x.id === id) || LIPSYNC_BY_ID.get(id);
+  const m = VIDEO_MODELS.find((x) => x.id === id) || LIPSYNC_BY_ID.get(id) || UPSCALE_BY_ID.get(id) || FINISH_BY_ID.get(id);
   if (m && m.short) return m.short;
   return String(label || id || "take").replace(/[^A-Za-z0-9]+/g, "").slice(0, 20) || "take";
 }

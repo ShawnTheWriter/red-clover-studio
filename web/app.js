@@ -9,6 +9,7 @@ import { blockingSentence } from "/shared/blocking.js";
 import { dialogueLines, speakers, lineStatus } from "/shared/dialogue.js";
 import { videoModelFor, nearestSellable } from "/shared/schema.js";
 import { defaultRoomTonePrompt, defaultSfxPrompt } from "/shared/sound.js";
+import { trimSpans, spansDuration, isWholeTake } from "/shared/trim.js";
 
 const $ = (s) => document.querySelector(s);
 const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
@@ -936,6 +937,15 @@ function beatField(shot, beat, key) {
 // label/action/camera start blank, ready for what this new shot actually is.
 // The server relabels shotCode for the whole scene, so what was 3b becomes
 // 3c automatically; just reload and it's already in order.
+// A shot just added from the Production board: select it and put the cursor in
+// its name field (the inspector heading), so naming it is the obvious next step.
+let NAME_FOCUS = null;
+function openNewShot(made) {
+  if (!made || !made.id || STAGE !== "prod") return;
+  SEL_SHOT = made.id; NAME_FOCUS = made.id;
+  if (made.sceneNum != null) CUR_SCENE = String(made.sceneNum);
+}
+
 async function insertShotAfter(shot) {
   const idx = (EP.shots || []).findIndex((s) => s.id === shot.id);
   const draft = {
@@ -943,8 +953,9 @@ async function insertShotAfter(shot) {
     intext: shot.intext, loc: shot.loc, time: shot.time, location: shot.location,
   };
   try {
-    await post("/api/episode/shot", { dir: EP.dir, shot: draft, index: idx + 1 });
+    const made = await post("/api/episode/shot", { dir: EP.dir, shot: draft, index: idx + 1 });
     PROMPTS = await api(`/api/episode/prompts?dir=${encodeURIComponent(EP.dir)}`);
+    openNewShot(made);
     await reloadEpisode();
   } catch (e) { fail(e); }
 }
@@ -1001,8 +1012,9 @@ async function addShotToScene(g) {
   const sc = g.scene || {};
   const draft = { sceneId: sc.id, sceneNum: g.num, intext: sc.intext, loc: sc.loc, time: sc.time, location: sc.loc };
   try {
-    await post("/api/episode/shot", { dir: EP.dir, shot: draft, index: at });
+    const made = await post("/api/episode/shot", { dir: EP.dir, shot: draft, index: at });
     PROMPTS = await api(`/api/episode/prompts?dir=${encodeURIComponent(EP.dir)}`);
+    openNewShot(made);
     await reloadEpisode();
   } catch (e) { fail(e); }
 }
@@ -1662,10 +1674,23 @@ const PICK_FAMILIES = [["h3max", "MiniMax H3 Max"], ["h3", "MiniMax H3"], ["sd25
 const PICK_RES_ORDER = ["480p draft", "480p", "480P", "720p", "768P", "1080p", "1080P", "2K", "4k", "4K"];
 const pickMoney = (m) => `$${Number(m.usdPerVideoSecond).toFixed(m.usdPerVideoSecond < 0.1 ? 3 : 2)}`;
 const pickEst = (m) => (m.confidence === "exact" || m.confidence === "measured" || m.confidence === "live" ? "" : "~");
+// Shawn, 2026-10-17: Atlas is cheaper than fal on everything it sells except
+// MiniMax H3 Max, so a pick should land on the cheapest CONNECTED service that
+// sells that exact combination (the same rule the server's cheapest route
+// applies when a take is sent), not on fal by default.
+function viaReady(via) { const d = MODELS && MODELS.drivers && MODELS.drivers[via || "fal"]; return !d || d.ready; }
+function cheapestSibling(m) {
+  if (CHEAPEST_ROUTE === false || !(MODELS && MODELS.video)) return m;
+  const same = MODELS.video.filter((x) => x.family === m.family && x.mode === m.mode && (x.tier || null) === (m.tier || null) && (x.res || null) === (m.res || null) && !x.optIn);
+  const ready = same.filter((x) => viaReady(x.via));
+  if (!ready.length) return m;
+  const best = ready.reduce((a, x) => (x.usdPerVideoSecond < a.usdPerVideoSecond ? x : a), ready[0]);
+  return viaReady(m.via) && best.usdPerVideoSecond >= m.usdPerVideoSecond * 0.995 ? m : best;
+}
 function pickBest(models, want) {
   // Exact match first; otherwise keep what matters most: family, mode, tier, quality, service.
   const score = (m) => (m.family === want.family ? 1000 : 0) + (m.mode === want.mode ? 100 : 0) + ((m.tier || null) === (want.tier || null) ? 30 : 0) + ((m.res || null) === (want.res || null) ? 10 : 0) + ((m.via || "fal") === (want.via || "fal") ? 3 : 0) + (m.id.includes("@") ? 0 : 1);
-  return [...models].sort((a, b) => score(b) - score(a))[0];
+  return cheapestSibling([...models].sort((a, b) => score(b) - score(a))[0]);
 }
 // Cheapest route (2026-10-13): the server may send a take through another
 // connected service that sells the same model for less. The quote says so.
@@ -1701,7 +1726,7 @@ function videoModelPicker(models, curId, onPick) {
   fsel.onchange = () => {
     const inFam = models.filter((m) => m.family === fsel.value);
     const pick = inFam.find((m) => !m.id.includes("@") && (m.via || "fal") === "fal" && m.mode === "frames") || inFam[0];
-    onPick(pick.id);
+    onPick(cheapestSibling(pick).id);
   };
   const r0 = el("div", "row"); r0.append(el("span", "k", "MODEL"), fsel); box.append(r0);
   const fam = models.filter((m) => m.family === cur.family);
@@ -1741,20 +1766,34 @@ function videoGeneratePane(shot) {
   const box = el("div", "card"); box.style.cssText = "margin-top:10px;background:var(--panel2)";
   box.append(Object.assign(el("h3"), { textContent: "Generate video", style: "font-size:12px;margin-bottom:6px" }));
 
-  box.append(importClipPane(shot));
-  box.append(dialogueAudioPane(shot));
+  box.append(fold("g-clip", "ADD A CLIP YOU ALREADY HAVE", "from the project or your computer", (b) => b.append(importClipPane(shot))));
+  const nAudio = (shot.audioClips || []).length;
+  box.append(fold("g-dlg", "DIALOGUE AUDIO", nAudio ? `${nAudio} recording${nAudio === 1 ? "" : "s"}` : "none yet", (b) => b.append(dialogueAudioPane(shot))));
 
   // The shot's takes show whatever blocks generation (they used to be on the
   // always-visible Version tray; now this is the only place per shot).
   const takesList = () => {
     const takesHost = el("div"); takesHost.style.marginTop = "10px";
-    takesHost.append(Object.assign(el("div", "mini"), { textContent: "Takes for this shot:" }));
+    const head = el("div", "row"); head.style.cssText = "align-items:center;gap:8px";
+    head.append(Object.assign(el("div", "mini"), { textContent: "Takes for this shot:" }));
+    const failed = (shot.versions || []).filter((v) => v.state === "error");
+    if (failed.length) {
+      const clr = el("button", null, `Clear ${failed.length} failed`);
+      clr.style.cssText = "font-size:11px;padding:2px 8px";
+      clr.title = "Remove every failed take of this shot from the list (they never produced a video)";
+      clr.onclick = async () => {
+        try { for (const f of failed) await post("/api/episode/version/delete", { dir: EP.dir, versionId: f.id }); await reloadEpisode(shot.id); } catch (e) { fail(e); }
+      };
+      head.append(clr);
+    }
+    takesHost.append(head);
     shot.versions.forEach((v) => takesHost.append(versionRow({
       ...v, shotId: v.shotId || shot.id, shotCode: `${shot.sceneNum}${shot.shotCode}`, shotLabel: shot.label,
       selected: (shot.selectedVersions || []).includes(v.id),
       trackIndex: (shot.selectedVersions || []).indexOf(v.id),
     })));
-    return takesHost;
+    const n = shot.versions.length, nSel = (shot.selectedVersions || []).length, nFail = (shot.versions || []).filter((v) => v.state === "error").length;
+    return fold("g-takes", "TAKES FOR THIS SHOT", `${n} take${n === 1 ? "" : "s"}${nSel ? ` · ${nSel} selected` : ""}${nFail ? ` · ${nFail} failed` : ""}`, (b) => b.append(takesHost), true);
   };
   const hasApprovedFrame = (shot.beats || []).some((b) => b.keyframe && b.frame && b.frame.approved);
   if (!hasApprovedFrame) {
@@ -1805,6 +1844,8 @@ function videoGeneratePane(shot) {
     const model = videoModels.find((m) => m.id === sel.modelId);
 
     const ctlRow = el("div", "grid g2");
+    const modelBody = el("div"), refBody = el("div");
+    let refTitle = "REFERENCES", refSummary = "";
     const pickModel = (id) => {
       sel.modelId = id;
       const m2 = videoModels.find((x) => x.id === sel.modelId);
@@ -1820,7 +1861,7 @@ function videoGeneratePane(shot) {
       post("/api/episode/video-model", { dir: EP.dir, shotId: shot.id, modelId: keep })
         .then(() => refreshPrompts(shot.id)).catch(fail);
     };
-    bodyEl.append(videoModelPicker(videoModels, sel.modelId, pickModel));
+    modelBody.append(videoModelPicker(videoModels, sel.modelId, pickModel));
 
     const secSel = document.createElement("select");
     (model.durations || [5, 10]).forEach((n) => {
@@ -1830,10 +1871,38 @@ function videoGeneratePane(shot) {
     });
     secSel.onchange = () => { sel.seconds = Number(secSel.value); draw(); };
     ctlRow.append(labeled("Duration", secSel));
-    bodyEl.append(ctlRow);
+    modelBody.append(ctlRow);
+    // Models with a sound switch (Atlas Seedance): same price either way. Off
+    // when the generated sound warbles; the take then has no audio track.
+    if (model.audioSwitch) {
+      // Two chips like the other pickers, so it reads as a choice: On (the
+      // model makes effects, ambience and speech) or Off (a silent take).
+      // Same price either way. (Shawn, 2026-10-17: a bare checkbox did not say
+      // which way it switched.)
+      const sb = el("div", "rc-vpick");
+      const row = el("div", "row"); row.append(el("span", "k", "SOUND"));
+      const sChip = (text, on, val, title) => {
+        const b = el("button", "rc-chip" + (on ? " on" : ""), text);
+        b.title = title;
+        b.onclick = () => { sel.audio = val; draw(); };
+        return b;
+      };
+      row.append(
+        sChip("On", sel.audio !== false, true, "The model generates sound: effects, ambience and speech"),
+        sChip("Off", sel.audio === false, false, "A silent take. Same price. Use it when the sound warbles, or when you will add the sound yourself"),
+      );
+      sb.append(row);
+      sb.append(Object.assign(el("div", "mini"), {
+        textContent: sel.audio === false
+          ? "Silent take: no sound from the model. Add voices and sound in Post-production → Sound. Same price."
+          : "The model makes the sound: effects, ambience and any speech. Same price if you turn it off.",
+        style: "margin:2px 0 4px",
+      }));
+      modelBody.append(sb);
+    }
     if (target) {
       const r = shot.remaster;
-      bodyEl.append(Object.assign(el("div", "mini"), {
+      modelBody.append(Object.assign(el("div", "mini"), {
         textContent: `Target from the cut: ${r.spanSec.toFixed(2)} s used + ${r.handlesSec} s handles each end = ${target.toFixed(2)} s.${sel.seconds < target ? ` ${model.label} sells nothing that long — ${sel.seconds} s is its longest.` : ""}`,
         style: "margin:2px 0 6px",
       }));
@@ -1863,7 +1932,8 @@ function videoGeneratePane(shot) {
       det.append(Object.assign(el("pre"), { textContent: ref.text, style: "white-space:pre-wrap;font-size:11px;margin:6px 0 0;max-height:260px;overflow:auto" }));
       wrap.append(det);
       wrap.append(Object.assign(el("div", "mini warn"), { textContent: "fal notes Seedance 2.5 rejects many human-face image inputs. A rejected take shows an error here; a rejection at submit is not charged by this app.", style: "margin-top:6px" }));
-      bodyEl.append(wrap);
+      refBody.append(wrap);
+      refTitle = "REFERENCE IMAGES"; refSummary = `${ref.images.length} image${ref.images.length === 1 ? "" : "s"}${ref.videos.length ? ` + ${ref.videos.length} video${ref.videos.length === 1 ? "" : "s"}` : ""} · ${ref.images.filter((x) => x.kind === "storyboard").length} storyboard${ref.images.filter((x) => x.kind === "storyboard").length === 1 ? "" : "s"}, ${ref.images.filter((x) => x.kind !== "storyboard").length} from the vault`;
     } else if (modelSlots > 1 && approvedKf >= 2) {
       // Pick start and end right here (Shawn, 2026-10-08: on 5a the wrong
       // end frame went out, and the only control was a button inside a
@@ -1909,10 +1979,11 @@ function videoGeneratePane(shot) {
         wrap.append(auto);
       }
       if (approvedKf > modelSlots) wrap.append(Object.assign(el("div", "mini"), { textContent: `${model.label} takes ${modelSlots} frames; the other ${approvedKf - modelSlots} approved storyboard${approvedKf - modelSlots === 1 ? " stays" : "s stay"} on the board for comparison.`, style: "margin-top:6px" }));
-      bodyEl.append(wrap);
+      refBody.append(wrap);
+      refTitle = "FRAMES SENT"; refSummary = shot.startBeatId || shot.endBeatId ? "start and end picked by you" : "start and end: automatic";
     }
 
-    bodyEl.append(shotRefsSection(shot, "gen"));
+    refBody.append(shotRefsSection(shot, "gen"));
     if (model.inputMode === "frames+refs") {
       // H3 Max references: what goes as Image 1…, from the SAME resolver the
       // job queue freezes onto the take (shown == sent).
@@ -1938,8 +2009,14 @@ function videoGeneratePane(shot) {
       det.append(Object.assign(el("summary"), { textContent: "The exact prompt that will be sent", style: "cursor:pointer;font-size:11px" }));
       det.append(Object.assign(el("pre"), { textContent: fr.text, style: "white-space:pre-wrap;font-size:11px;margin:6px 0 0;max-height:260px;overflow:auto" }));
       wrap.append(det);
-      bodyEl.append(wrap);
+      refBody.append(wrap);
+      refTitle = "FRAMES + IDENTITY REFERENCES"; refSummary = `start/end + ${fr.images.length} image${fr.images.length === 1 ? "" : "s"}`;
     }
+    // The model / length / sound group, then the references group: each one line when closed.
+    const sndTxt = model.audioSwitch ? ` · sound ${sel.audio === false ? "off" : "on"}` : "";
+    bodyEl.append(fold("g-model", "MODEL · LENGTH · SOUND", `${model.label} · ${sel.seconds}s${sndTxt}`, (b) => b.append(modelBody), true));
+    if (!refSummary) refSummary = `${(shot.refs || []).length} on this shot`;
+    bodyEl.append(fold("g-refs", refTitle, refSummary, (b) => b.append(refBody), false));
     if (model.inputMode !== "reference") bodyEl.append(claudePromptTool(shot, sel));
 
     const quoteHost = el("div"); quoteHost.style.margin = "6px 0";
@@ -1970,7 +2047,7 @@ function videoGeneratePane(shot) {
           }
           genBtn.disabled = true; genBtn.textContent = "Submitting…";
           try {
-            await post("/api/episode/fanout", { dir: EP.dir, shotIds: [shot.id], modelIds: [sel.modelId], seconds: sel.seconds, driver: "fal", confirmedUSD: q.totalUSD });
+            await post("/api/episode/fanout", { dir: EP.dir, shotIds: [shot.id], modelIds: [sel.modelId], seconds: sel.seconds, driver: "fal", confirmedUSD: q.totalUSD, ...(model.audioSwitch && sel.audio === false ? { audio: false } : {}) });
             await reloadEpisode(shot.id);
           } catch (e) {
             genBtn.disabled = false; genBtn.textContent = `Generate video — $${q.totalUSD.toFixed(2)}`;
@@ -2471,8 +2548,9 @@ function imageThumb(path, onClick, size) {
     // Centered vertically on the thumbnail (not top-aligned) so it doesn't
     // depend on the thumbnail's position in a short viewport — a tall preview
     // top-aligned to a thumb near the bottom of the screen runs off the fold.
-    hoverPreview.style.cssText = `position:absolute;z-index:50;${popSide(wrap, 360)};top:50%;transform:translateY(-50%);max-width:360px;max-height:min(480px,90vh);width:auto;height:auto;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#0a0d12;box-shadow:0 8px 24px rgba(0,0,0,.6);pointer-events:none`;
-    wrap.append(hoverPreview);
+    hoverPreview.style.cssText = "max-width:360px;max-height:min(480px,90vh);width:auto;height:auto;object-fit:contain;border:1px solid var(--line);border-radius:6px;background:#0a0d12;box-shadow:0 8px 24px rgba(0,0,0,.6);pointer-events:none";
+    placePop(wrap, hoverPreview, 360);
+    hoverPreview.addEventListener("load", () => { if (hoverPreview) placePop(wrap, hoverPreview, hoverPreview.getBoundingClientRect().width || 360); });
   };
   wrap.onmouseleave = () => {
     if (!hoverPreview) return;
@@ -2780,6 +2858,11 @@ function boardFramePicker(shot, beat) {
   tabs.append(tGen, tLib, tEarlier);
   if (takes.length) tabs.append(tTake);
   tabs.append(tInbox);
+  const closeP = el("button", null, "✕ Close picker");
+  closeP.title = "Close this image picker";
+  closeP.style.marginLeft = "auto";
+  closeP.onclick = async () => { OPEN_PICKERS.delete(beat.id); await reloadEpisode(shot.id); };
+  tabs.append(closeP);
   wrap.append(tabs);
   const host = el("div"); host.style.marginTop = "8px"; wrap.append(host);
 
@@ -2787,6 +2870,9 @@ function boardFramePicker(shot, beat) {
 
   const applyFrame = async (path) => {
     await post("/api/episode/beat/frame", { dir: EP.dir, shotId: shot.id, beatId: beat.id, path, approved: false });
+    // The picker has done its job: it used to reopen itself after the reload and
+    // sit there open (Shawn, 2026-10-17).
+    OPEN_PICKERS.delete(beat.id);
     await reloadEpisode(shot.id);
   };
 
@@ -3646,6 +3732,17 @@ function fanOutConsole(card, led) {
   if (FANOUT_SEL.driver === "mock") {
     ctl.append(Object.assign(el("span", "pill ok"), { textContent: "mock — no spend" }));
   }
+  // Sound switch: only shown when a picked model has one (Atlas and Comfy Seedance rows).
+  const soundModels = [...FANOUT_SEL.models].map((id) => (MODELS.video || []).find((m) => m.id === id)).filter((m) => m && m.audioSwitch);
+  if (soundModels.length) {
+    ctl.append(Object.assign(el("span", "mini"), { textContent: "Sound" }));
+    [["On", true], ["Off", false]].forEach(([label, val]) => {
+      const b = el("button", "rc-chip" + ((FANOUT_SEL.audio !== false) === val ? " on" : ""), label);
+      b.title = val ? "The model generates sound: effects, ambience and speech" : "Silent takes. Same price. Applies to the models that have a sound switch";
+      b.onclick = () => { FANOUT_SEL.audio = val; loadProduction(card); };
+      ctl.append(b);
+    });
+  }
   box.append(ctl);
 
   box.append(Object.assign(el("div"), { id: "quoteBox", style: "margin-top:10px" }));
@@ -3658,6 +3755,7 @@ function fanOutConsole(card, led) {
 async function refreshQuote(box, card, led) {
   const host = box.querySelector("#quoteBox");
   const shotIds = [...FANOUT_SEL.shots], modelIds = [...FANOUT_SEL.models];
+  const soundModels = modelIds.map((id) => (MODELS.video || []).find((m) => m.id === id)).filter((m) => m && m.audioSwitch);
   if (!shotIds.length || !modelIds.length) {
     host.innerHTML = '<div class="mini">Pick at least one shot and one model.</div>';
     return;
@@ -3701,6 +3799,7 @@ async function refreshQuote(box, card, led) {
           dir: EP.dir, shotIds, modelIds, seconds: FANOUT_SEL.seconds,
           driver: FANOUT_SEL.driver,
           confirmedUSD: q.totalUSD,   // the exact figure shown above
+          ...(FANOUT_SEL.audio === false && soundModels.length ? { audio: false } : {}),
         });
         await loadProduction(card);
       } catch (e) { fail(e); go.disabled = false; }
@@ -3832,6 +3931,111 @@ function lipsyncPanel(v, onClose) {
   return box;
 }
 
+// "Finish at 1080p…" under an Atlas 480p draft take: Atlas re-renders the draft
+// at 1080p from the draft's own prompt, images, seed and sound (so there is
+// nothing to choose). Shows what the draft cost, what the finish costs and the
+// days left, and always confirms. Makes a NEW take; the draft stays.
+function finishPanel(v, onClose) {
+  const box = el("div"); box.style.cssText = "margin:6px 0 4px 6px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)";
+  const note = el("div", "mini"); note.style.margin = "0 0 6px";
+  note.textContent = "Atlas re-renders this draft at 1080p from its own prompt, images, seed and sound. The move and the cast should hold; faces, the sign and small detail are rendered again, so look closely. Only 1080p is offered. A draft can be finished any number of times within 7 days.";
+  const info = el("div", "mini"); info.style.margin = "6px 0";
+  box.append(note, info);
+  let quoted = null;
+  const go = el("button", "primary", "Finish at 1080p");
+  const cancel = el("button", null, "Close");
+  cancel.onclick = () => { box.remove(); onClose(); };
+  const btns = el("div", "row"); btns.append(go, cancel); box.append(btns);
+  go.disabled = true; info.textContent = "Pricing…";
+  (async () => {
+    try {
+      quoted = await post("/api/episode/finish/quote", { dir: EP.dir, versionId: v.id });
+      info.textContent = `Finish ${quoted.seconds}s at 1080p: $${quoted.totalUSD.toFixed(2)} (${quoted.confidence}). The draft cost $${quoted.draftUSD.toFixed(2)}, so ${quoted.bothUSD.toFixed(2)} in all.${quoted.expiresAt ? ` Finish it by ${quoted.expiresAt.slice(0, 10)} (${quoted.daysLeft} day${quoted.daysLeft === 1 ? "" : "s"} left).` : ""}`;
+      go.textContent = `Finish at 1080p (~$${quoted.totalUSD.toFixed(2)})`;
+      go.disabled = false;
+    } catch (e) { info.textContent = e.message; }
+  })();
+  go.onclick = async () => {
+    if (!quoted) return;
+    const msg = `Finish "${v.modelLabel}" at 1080p?\n\n${quoted.seconds}s · ~$${quoted.totalUSD.toFixed(2)} (charged to this episode's budget)\nCreates a NEW take; the draft is untouched. A paid take can't be undone away.`;
+    if (!confirm(msg)) return;
+    go.disabled = true;
+    try {
+      await post("/api/episode/finish", { dir: EP.dir, versionId: v.id, confirmedUSD: quoted.needsConfirmation ? quoted.totalUSD : undefined });
+      flashNote("Finish queued — the 1080p take appears in the Version tray when it finishes (a few minutes).");
+      await reloadEpisode(v.shotId);
+    } catch (e) { fail(e); go.disabled = false; }
+  };
+  return box;
+}
+
+// The "Upscale…" form under a take: pick a model, say whether to upscale just
+// the trimmed part or the whole take, see the exact price from the same server
+// quote the spend guards use, and always confirm before spending. Makes a NEW
+// take (the original is untouched); the result is matched to the source's
+// frame rate and size, so it drops into the cut in its place.
+function upscalePanel(v, onClose) {
+  const box = el("div"); box.style.cssText = "margin:6px 0 4px 6px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)";
+  const shot = EP.shots.find((s) => s.id === v.shotId);
+  const tt = shot && shot.takeTrims && shot.takeTrims[v.id];
+  const full = Number(v.seconds);
+  const kept = tt ? trimSpans(tt, full) : null;
+  const hasTrim = !!kept && kept.length > 0 && !isWholeTake(kept, full);
+  const mk = (opts) => { const s = document.createElement("select"); opts.forEach(([val, txt]) => { const o = document.createElement("option"); o.value = val; o.textContent = txt; s.append(o); }); return s; };
+  const models = GRAMMAR.upscaleModels || [];
+  const modelSel = mk(models.map((m) => [m.id, m.label]));
+  const spanSel = mk(hasTrim
+    ? [["trim", `Only the part used in the cut (${+spansDuration(kept).toFixed(2)}s${kept.length > 1 ? `, ${kept.length} pieces joined` : ""})`], ["whole", `The whole take (${+full.toFixed(2)}s)`]]
+    : [["whole", `The whole take (${+full.toFixed(2)}s)`]]);
+  const driverSel = mk([["fal", "fal (paid)"], ["mock", "mock (free rehearsal)"]]);
+  const g = el("div", "grid g2");
+  g.append(labeled("Model", modelSel), labeled("Upscale", spanSel), labeled("To", Object.assign(el("div", "mini"), { textContent: "1080p (matched to the take's shape)" })), labeled("Driver", driverSel));
+  box.append(g);
+
+  const note = el("div", "mini"); note.style.margin = "6px 0";
+  box.append(note);
+  const info = el("div", "mini"); info.style.margin = "6px 0";
+  box.append(info);
+  let quoted = null;
+  const go = el("button", "primary", "Upscale");
+  const cancel = el("button", null, "Close");
+  cancel.onclick = () => { box.remove(); onClose(); };
+  const btns = el("div", "row"); btns.append(go, cancel); box.append(btns);
+
+  const refresh = async () => {
+    go.disabled = true; quoted = null; info.textContent = "Pricing…";
+    const m = models.find((x) => x.id === modelSel.value);
+    note.textContent = m ? m.note : "";
+    try {
+      quoted = await post("/api/episode/upscale/quote", { dir: EP.dir, versionId: v.id, modelId: modelSel.value, useTrim: spanSel.value === "trim" });
+      info.textContent = `Priced on ${quoted.seconds}s: $${quoted.totalUSD.toFixed(2)} (${quoted.modelLabel}, ${quoted.confidence}). Watch the result before selecting it.`;
+      go.textContent = `Upscale (~$${quoted.totalUSD.toFixed(2)})`;
+      go.disabled = false;
+    } catch (e) { info.textContent = e.message; }
+  };
+  modelSel.onchange = spanSel.onchange = refresh;
+
+  go.onclick = async () => {
+    if (!quoted) return;
+    const isMock = driverSel.value === "mock";
+    const msg = `Upscale "${v.modelLabel}" to 1080p?\n\n` +
+      `${quoted.modelLabel} · ${quoted.seconds}s · ${isMock ? "MOCK driver — no real spend" : `~$${quoted.totalUSD.toFixed(2)} (charged to this episode's budget)`}\n` +
+      `Creates a NEW take; the original is untouched. A paid take can't be undone away.`;
+    if (!confirm(msg)) return;
+    go.disabled = true;
+    try {
+      await post("/api/episode/upscale", {
+        dir: EP.dir, versionId: v.id, modelId: modelSel.value, useTrim: spanSel.value === "trim", driver: driverSel.value,
+        confirmedUSD: quoted.needsConfirmation ? quoted.totalUSD : undefined,
+      });
+      flashNote("Upscale queued — the new take appears in the Version tray when it finishes (a few minutes; SeedVR2 takes longer).");
+      await reloadEpisode(v.shotId);
+    } catch (e) { fail(e); go.disabled = false; }
+  };
+  refresh();
+  return box;
+}
+
 function versionRow(v) {
   const block = el("div", "ver-block");
   const row = el("div", "eprow"); row.style.borderBottom = "none"; // ver-block carries the separator instead
@@ -3867,7 +4071,19 @@ function versionRow(v) {
     p.title = v.importedFrom ? `From: ${v.importedFrom}` : "A clip added from outside the app — no generation cost";
     row.append(p);
   } else {
-    row.append(Object.assign(el("span", `pill ${stateColor}`), { textContent: v.state }));
+    const live = v.state === "queued" || v.state === "running";
+    row.append(Object.assign(el("span", `pill ${stateColor}${live ? " live" : ""}`), { textContent: v.state }));
+    if (live) block.classList.add("ver-live");
+  }
+  if (v.op === "finish") {
+    const fp = Object.assign(el("span", "pill"), { textContent: "finish 1080p" });
+    fp.title = "Made from an Atlas 480p draft: the same prompt, images and seed, rendered at 1080p";
+    row.append(fp);
+  }
+  if (v.op === "upscale") {
+    const up = Object.assign(el("span", "pill"), { textContent: "upscale" });
+    up.title = `Made from another take${v.spans ? (v.spans.length > 1 ? ` (the ${v.spans.length} pieces used in the cut, joined)` : " (only the part used in the cut)") : ""} · ${v.target || "1080p"}${v.upscaleNote ? ` · ${v.upscaleNote}` : ""}`;
+    row.append(up);
   }
   if (v.op === "lipsync") {
     const lp = Object.assign(el("span", "pill"), { textContent: "lip sync" });
@@ -3908,7 +4124,18 @@ function versionRow(v) {
   if (v.elapsedMs) row.append(Object.assign(el("span", "mini"), { textContent: `${Math.round(v.elapsedMs / 1000)}s` }));
 
   if (v.state === "error") {
-    row.append(Object.assign(el("div", "mini"), { textContent: v.error || "failed", style: "flex:1;color:var(--bad)" }));
+    // The first line only; the whole message (often a long request dump) is one click away.
+    const full = String(v.error || "failed");
+    const first = (full.split("\n")[0] || full).slice(0, 180) + (full.length > 180 || full.includes("\n") ? "…" : "");
+    const box = el("div", "mini"); box.style.cssText = "flex:1;color:var(--bad);min-width:0";
+    box.append(Object.assign(el("div"), { textContent: first }));
+    if (first !== full) {
+      const det = el("details"); det.style.marginTop = "2px";
+      det.append(Object.assign(el("summary"), { textContent: "Full message", style: "cursor:pointer;color:var(--muted)" }));
+      det.append(Object.assign(el("pre"), { textContent: full, style: "white-space:pre-wrap;word-break:break-word;font-size:11px;margin:4px 0;max-height:220px;overflow:auto;color:var(--muted)" }));
+      box.append(det);
+    }
+    row.append(box);
   } else if (v.state === "done" && v.path) {
     const link = el("a", "mini"); link.textContent = "open in new tab"; link.href = mediaURL(v.path); link.target = "_blank";
     link.style.flex = "1";
@@ -3941,6 +4168,18 @@ function versionRow(v) {
     let panel = null;
     ls.onclick = () => { if (panel) { panel.remove(); panel = null; return; } panel = lipsyncPanel(v, () => { panel = null; }); block.append(panel); };
     row.append(ls);
+    if (v.draftId && v.op !== "finish") {
+      const fin = el("button", null, "Finish at 1080p…");
+      fin.title = "Re-render this Atlas draft at 1080p (within 7 days) — makes a NEW take, costs money, asks first";
+      let finPanel = null;
+      fin.onclick = () => { if (finPanel) { finPanel.remove(); finPanel = null; return; } finPanel = finishPanel(v, () => { finPanel = null; }); block.append(finPanel); };
+      row.append(fin);
+    }
+    const upb = el("button", null, "Upscale…");
+    upb.title = "Make a 1080p copy of this take (SeedVR2 or Bytedance) — makes a NEW take, costs money, asks first";
+    let upPanel = null;
+    upb.onclick = () => { if (upPanel) { upPanel.remove(); upPanel = null; return; } upPanel = upscalePanel(v, () => { upPanel = null; }); block.append(upPanel); };
+    row.append(upb);
   }
   row.append(takeMoveSelect(v));
   if (v.state === "done" && v.path) {
@@ -3948,9 +4187,13 @@ function versionRow(v) {
     sm.title = `Package this take's prompt, frames and settings as a reusable shot module. ${MODULES_SOON}`;
     row.append(sm);
   }
-  const del = el("button", null, "✕");
-  del.title = "Remove this take from the tray (the file stays on disk).";
+  const del = el("button", null, v.state === "error" ? "Dismiss" : "✕");
+  del.title = v.state === "error" ? "Remove this failed take from the list (it never produced a video)." : "Remove this take from the tray (the file stays on disk).";
   del.onclick = async () => {
+    if (v.state === "error") {
+      try { await post("/api/episode/version/delete", { dir: EP.dir, versionId: v.id }); await reloadEpisode(v.shotId); } catch (e) { fail(e); }
+      return;
+    }
     const label = v.modelLabel || `${v.seconds}s take`;
     const free = v.driver === "import" || v.driver === "reuse";
     const msg = free
@@ -3995,10 +4238,11 @@ function takeTrimLine(v, playerVideo) {
   inI.title = "Seconds into the take where the usable part starts (blank = the start)";
   outI.title = "Seconds into the take where the usable part ends (blank = the end)";
   const status = el("span", "mini");
-  const save = async (inSec, outSec) => {
+  const save = async (inSec, outSec, cuts) => {
     try {
-      const r = await post("/api/episode/take/trim", { dir: EP.dir, shotId: v.shotId, versionId: v.id, inSec, outSec });
-      flashNote(r.trim ? `Using ${fmtTrim(r.trim.inSec || 0)}–${fmtTrim(r.trim.outSec ?? r.durationSec)} of this take${r.rebuilt ? " · timeline updated" : ""}` : "Using the whole take");
+      const r = await post("/api/episode/take/trim", { dir: EP.dir, shotId: v.shotId, versionId: v.id, inSec, outSec, ...(cuts ? { cuts } : {}) });
+      const nCuts = (r.trim && r.trim.cuts ? r.trim.cuts.length : 0);
+      flashNote(r.trim ? `Using ${fmtTrim(r.trim.inSec || 0)}–${fmtTrim(r.trim.outSec ?? r.durationSec)} of this take${nCuts ? `, ${nCuts} section${nCuts === 1 ? "" : "s"} cut out (${spansDuration(r.spans).toFixed(2)} s kept)` : ""}${r.rebuilt ? " · timeline updated" : ""}` : "Using the whole take");
       await reloadEpisode(v.shotId);
     } catch (e) { fail(e); }
   };
@@ -4021,12 +4265,36 @@ function takeTrimLine(v, playerVideo) {
   if (cur) {
     const clr = el("button", null, "Whole take");
     clr.style.cssText = "font-size:10px;padding:2px 6px";
-    clr.title = "Clear the marks: use the whole take";
-    clr.onclick = () => save(null, null);
+    clr.title = "Clear the marks (and any cut-outs): use the whole take";
+    clr.onclick = () => save(null, null, []);
     line.append(clr);
   }
   line.append(status);
-  return line;
+
+  // Cut-outs: sections taken OUT of the middle of the usable part (a cross-fade,
+  // a stumble). Type start and end seconds, or use the player's panel.
+  const cuts = (cur && cur.cuts) || [];
+  const cutRow = el("div"); cutRow.style.cssText = "display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 6px 4px;font-size:11px";
+  cutRow.append(Object.assign(el("span", "mini"), { textContent: "Cut out", style: `font-weight:600${cuts.length ? ";color:var(--ok)" : ""}` }));
+  const cs = box(null, "from"), ce = box(null, "to");
+  cs.title = "Seconds into the take where the cut-out starts"; ce.title = "Seconds into the take where the cut-out ends";
+  const addCut = el("button", null, "+ Cut out"); addCut.style.cssText = "font-size:10px;padding:2px 6px";
+  addCut.title = "Remove this section from the take; the pieces either side play one after the other";
+  addCut.onclick = () => {
+    const a = val(cs), b = val(ce);
+    if (a == null || b == null || !(b > a)) { fail(new Error("Type where the cut-out starts and a later second where it ends.")); return; }
+    save(val(inI), val(outI), cuts.concat([{ startSec: a, endSec: b }]));
+  };
+  cutRow.append(cs, Object.assign(el("span", "mini"), { textContent: "→" }), ce, Object.assign(el("span", "mini"), { textContent: "s" }), addCut);
+  cuts.forEach((c, k) => {
+    const chip = el("button", null, `${fmtTrim(c.startSec)} → ${fmtTrim(c.endSec)}  ✕`);
+    chip.style.cssText = "font-size:10px;padding:2px 6px";
+    chip.title = "Put this section back";
+    chip.onclick = () => save(val(inI), val(outI), cuts.filter((_, j) => j !== k));
+    cutRow.append(chip);
+  });
+  const wrap = el("div"); wrap.append(line, cutRow);
+  return wrap;
 }
 
 // Beside the open player: live playhead, Mark in / Mark out at the playhead,
@@ -4038,36 +4306,47 @@ function takeMarkPanel(v, vid, onSaved = null) {
   p.append(Object.assign(el("div"), { textContent: "Usable part of this take", style: "font-size:13px;font-weight:600" }));
   const now = Object.assign(el("div"), { textContent: "Playhead 0:00.00", style: "font-size:20px;font-variant-numeric:tabular-nums" });
   p.append(now);
-  let mark = { inSec: cur ? cur.inSec : null, outSec: cur ? cur.outSec : null };
+  let mark = { inSec: cur ? cur.inSec : null, outSec: cur ? cur.outSec : null, cuts: cur && cur.cuts ? cur.cuts : [] };
   const bar = el("div"); bar.style.cssText = "position:relative;height:10px;border-radius:5px;background:var(--line)";
-  const fill = el("div"); fill.style.cssText = "position:absolute;top:0;bottom:0;border-radius:5px;background:var(--ok)";
+  const fills = el("div"); fills.style.cssText = "position:absolute;inset:0";
   const head = el("div"); head.style.cssText = "position:absolute;top:-3px;width:2px;height:16px;background:#fff";
-  bar.append(fill, head);
+  bar.append(fills, head);
   const range = Object.assign(el("div", "mini"), { style: "font-variant-numeric:tabular-nums" });
+  const unmarked = () => mark.inSec == null && mark.outSec == null && !mark.cuts.length;
   const draw = () => {
     const d = vid.duration || 0;
     now.textContent = `Playhead ${fmtTrim(vid.currentTime)}`;
     if (!d) return;
-    const a = mark.inSec ?? 0, b = mark.outSec ?? d;
-    fill.style.left = `${(a / d) * 100}%`; fill.style.width = `${Math.max(0, (b - a) / d) * 100}%`;
-    fill.style.opacity = mark.inSec == null && mark.outSec == null ? "0.25" : "1";
+    // One green segment per kept piece; the cut-outs show as gaps.
+    const spans = trimSpans(mark, d);
+    fills.replaceChildren();
+    for (const sp of spans) {
+      const seg = el("div");
+      seg.style.cssText = `position:absolute;top:0;bottom:0;border-radius:3px;background:var(--ok);left:${(sp.inSec / d) * 100}%;width:${Math.max(0.5, ((sp.outSec - sp.inSec) / d) * 100)}%;opacity:${unmarked() ? 0.25 : 1}`;
+      fills.append(seg);
+    }
     head.style.left = `${(vid.currentTime / d) * 100}%`;
-    range.textContent = mark.inSec == null && mark.outSec == null
+    const kept = spansDuration(spans);
+    const a = mark.inSec ?? 0, b = mark.outSec ?? d;
+    range.textContent = unmarked()
       ? `Whole take (${fmtTrim(d)}) — nothing marked`
-      : `Use ${fmtTrim(a)} → ${fmtTrim(b)}  (${(b - a).toFixed(2)} s of ${d.toFixed(2)} s)`;
+      : mark.cuts.length
+        ? `Use ${fmtTrim(a)} → ${fmtTrim(b)} minus ${mark.cuts.length} cut-out${mark.cuts.length === 1 ? "" : "s"}  (${kept.toFixed(2)} s kept of ${d.toFixed(2)} s)`
+        : `Use ${fmtTrim(a)} → ${fmtTrim(b)}  (${(b - a).toFixed(2)} s of ${d.toFixed(2)} s)`;
   };
   vid.addEventListener("timeupdate", draw);
   vid.addEventListener("loadedmetadata", draw);
   vid.addEventListener("seeked", draw);
   p.append(bar, range);
+  // `next` may carry `cuts`; leave it out to keep the cuts already stored.
   const save = async (next) => {
     try {
-      const r = await post("/api/episode/take/trim", { dir: EP.dir, shotId: v.shotId, versionId: v.id, inSec: next.inSec, outSec: next.outSec });
-      mark = { inSec: r.trim ? r.trim.inSec : null, outSec: r.trim ? r.trim.outSec : null };
+      const r = await post("/api/episode/take/trim", { dir: EP.dir, shotId: v.shotId, versionId: v.id, inSec: next.inSec, outSec: next.outSec, ...(next.cuts ? { cuts: next.cuts } : {}) });
+      mark = { inSec: r.trim ? r.trim.inSec : null, outSec: r.trim ? r.trim.outSec : null, cuts: r.trim && r.trim.cuts ? r.trim.cuts : [] };
       if (shot) { shot.takeTrims = shot.takeTrims || {}; if (r.trim) shot.takeTrims[v.id] = r.trim; else delete shot.takeTrims[v.id]; }
-      draw();
+      draw(); drawCuts();
       if (onSaved) onSaved(r);
-      flashNote(r.trim ? `Marked ${fmtTrim(r.trim.inSec || 0)} → ${fmtTrim(r.trim.outSec ?? r.durationSec)}${r.rebuilt ? " · timeline updated" : ""}` : "Using the whole take");
+      flashNote(r.trim ? `Marked ${fmtTrim(r.trim.inSec || 0)} → ${fmtTrim(r.trim.outSec ?? r.durationSec)}${mark.cuts.length ? ` with ${mark.cuts.length} cut-out${mark.cuts.length === 1 ? "" : "s"}` : ""}${r.rebuilt ? " · timeline updated" : ""}` : "Using the whole take");
     } catch (e) { fail(e); }
   };
   const t = () => Math.round(vid.currentTime * 100) / 100;
@@ -4077,21 +4356,62 @@ function takeMarkPanel(v, vid, onSaved = null) {
   mIn.onclick = () => save({ inSec: t(), outSec: mark.outSec != null && mark.outSec > t() ? mark.outSec : null });
   mOut.onclick = () => save({ inSec: mark.inSec != null && mark.inSec < t() ? mark.inSec : null, outSec: t() });
   btns.append(mIn, mOut);
+
+  // Cut-outs: scrub to where the bad stretch starts, click "Cut from here",
+  // scrub to where it ends, click "Cut to here". The two pieces either side
+  // then play one after the other; the green bar shows the gap.
+  let cutFrom = null;
+  const cFrom = el("button", null, "Cut from here"); cFrom.title = "Start of a stretch to take OUT of the middle (a cross-fade, a stumble)";
+  const cTo = el("button", null, "Cut to here"); cTo.title = "End of the stretch to take out"; cTo.disabled = true;
+  const cutNote = Object.assign(el("div", "mini"), { style: "min-height:1em" });
+  const cutList = el("div"); cutList.style.cssText = "display:flex;flex-direction:column;gap:4px";
+  const drawCuts = () => {
+    cutList.replaceChildren();
+    mark.cuts.forEach((c, k) => {
+      const chip = el("button", null, `Cut out ${fmtTrim(c.startSec)} → ${fmtTrim(c.endSec)} (${(c.endSec - c.startSec).toFixed(2)} s)  ✕`);
+      chip.style.cssText = "font-size:11px;text-align:left;padding:3px 6px";
+      chip.title = "Put this section back";
+      chip.onclick = () => save({ inSec: mark.inSec, outSec: mark.outSec, cuts: mark.cuts.filter((_, j) => j !== k) });
+      cutList.append(chip);
+    });
+  };
+  cFrom.onclick = () => {
+    cutFrom = t(); cTo.disabled = false;
+    cutNote.textContent = `Cut starts at ${fmtTrim(cutFrom)}. Scrub to where it ends, then click "Cut to here".`;
+  };
+  cTo.onclick = () => {
+    const end = t();
+    if (cutFrom == null || !(end > cutFrom)) { cutNote.textContent = "The end of a cut-out must be after its start."; return; }
+    const a = cutFrom; cutFrom = null; cTo.disabled = true; cutNote.textContent = "";
+    save({ inSec: mark.inSec, outSec: mark.outSec, cuts: mark.cuts.concat([{ startSec: a, endSec: end }]) });
+  };
+  const btnsCut = el("div"); btnsCut.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
+  btnsCut.append(cFrom, cTo);
+
   const play = el("button", null, "Play marked part");
-  play.title = "Loop the marked part to check it";
+  play.title = "Loop the marked part (skipping the cut-outs) to check it";
   let looping = false;
-  const loop = () => { if (looping && mark.outSec != null && vid.currentTime >= mark.outSec) vid.currentTime = mark.inSec ?? 0; };
+  const loop = () => {
+    if (!looping) return;
+    const spans = trimSpans(mark, vid.duration || 0);
+    if (!spans.length) return;
+    const cur = spans.findIndex((sp) => vid.currentTime >= sp.inSec - 0.02 && vid.currentTime < sp.outSec);
+    if (cur >= 0) return;
+    // Past a piece (or inside a cut-out): on to the next piece, or back to the first.
+    const next = spans.find((sp) => sp.inSec > vid.currentTime);
+    vid.currentTime = next ? next.inSec : spans[0].inSec;
+  };
   vid.addEventListener("timeupdate", loop);
   play.onclick = () => {
     looping = !looping; play.textContent = looping ? "Stop loop" : "Play marked part";
-    if (looping) { vid.currentTime = mark.inSec ?? 0; vid.play(); } else vid.pause();
+    if (looping) { vid.currentTime = (trimSpans(mark, vid.duration || 0)[0] || { inSec: 0 }).inSec; vid.play(); } else vid.pause();
   };
-  const clr = el("button", null, "Whole take"); clr.title = "Clear the marks";
-  clr.onclick = () => save({ inSec: null, outSec: null });
+  const clr = el("button", null, "Whole take"); clr.title = "Clear the marks and any cut-outs";
+  clr.onclick = () => save({ inSec: null, outSec: null, cuts: [] });
   const btns2 = el("div"); btns2.style.cssText = "display:flex;gap:6px;flex-wrap:wrap";
   btns2.append(play, clr);
-  p.append(btns, btns2, Object.assign(el("div", "mini"), { textContent: "The timeline and the FCPXML export use only the marked part. Resolve still links the whole file, so you can extend the cut there." }));
-  draw();
+  p.append(btns, btnsCut, cutNote, cutList, btns2, Object.assign(el("div", "mini"), { textContent: "The timeline and the FCPXML export use only the marked part; a cut-out becomes a break between two clips from the same file. Resolve still links the whole file, so you can extend the cut there." }));
+  draw(); drawCuts();
   return p;
 }
 
@@ -4116,8 +4436,10 @@ function versionThumb(v, onClick) {
     if (pop) return;
     pop = el("video");
     Object.assign(pop, { src: mediaURL(v.path), muted: true, loop: true, autoplay: true, playsInline: true });
-    pop.style.cssText = `position:absolute;z-index:50;top:50%;transform:translateY(-50%);${popSide(wrap, 300)};width:300px;max-height:min(540px,90vh);object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#000;box-shadow:0 8px 24px rgba(0,0,0,.6);pointer-events:none`;
-    wrap.append(pop);
+    pop.style.cssText = "width:300px;height:auto;max-height:min(540px,90vh);object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#000;box-shadow:0 8px 24px rgba(0,0,0,.6);pointer-events:none";
+    placePop(wrap, pop, 300);
+    // Its height is only known once the video's shape is: place it again then.
+    pop.addEventListener("loadedmetadata", () => { if (pop) placePop(wrap, pop, 300); });
   };
   wrap.onmouseleave = () => {
     if (!pop) return;
@@ -4129,11 +4451,22 @@ function versionThumb(v, onClick) {
   return wrap;
 }
 
-// Which side a hover preview opens on: right of the thumbnail when there's
-// room, otherwise left (the inspector sits against the right edge).
-function popSide(anchor, width) {
+// Hover previews (Shawn, 2026-10-17: they were being cut off by the section
+// boxes of the production page). A preview used to be a child of its thumbnail,
+// so any ancestor with overflow:hidden or its own stacking order clipped or hid
+// it. Now it lives on the page itself (position:fixed, above everything) and is
+// placed from the thumbnail's position in the WINDOW: to the right when there
+// is room, else the left, and clamped so it never runs off the top or bottom.
+function placePop(anchor, pop, width) {
+  if (!pop.isConnected) document.body.append(pop);
   const r = anchor.getBoundingClientRect();
-  return r.right + width + 16 < window.innerWidth ? "left:100%;margin-left:8px" : "right:100%;margin-right:8px";
+  const w = width || pop.getBoundingClientRect().width || 300;
+  const h = pop.getBoundingClientRect().height || 0;
+  let left = r.right + 8;
+  if (left + w > window.innerWidth - 8) left = Math.max(8, r.left - 8 - w);
+  let top = r.top + r.height / 2 - h / 2;
+  top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+  Object.assign(pop.style, { position: "fixed", left: `${left}px`, top: `${top}px`, zIndex: "1000", transform: "none", margin: "0" });
 }
 
 // ---------------- post-production: timeline, trim, export ----------------
@@ -4155,7 +4488,24 @@ async function loadPostProduction(card) {
     else if (POST_VIEW === "sfx") host.append(sfxLane());
     else if (POST_VIEW === "roomtone") host.append(roomToneLane());
     else if (POST_VIEW === "resolve") host.append(fromResolveBox(card));
-    else host.append(timelineBuildBar(card, data.timeline), timelineList(card, data.timeline), exportBar(card, data.timeline));
+    else {
+      const v1 = (data.timeline.tracks.find((t) => t.id === "V1") || { clips: [] }).clips;
+      host.append(
+        fold("post-build", "TIMELINE", v1.length ? `${v1.length} clips on V1` : "not built yet", (b) => b.append(timelineBuildBar(card, data.timeline)), true),
+        fold("post-clips", "CLIP LIST · TRIMS", v1.length ? `${v1.length} clips` : "empty", (b) => b.append(timelineList(card, data.timeline))),
+        fold("post-export", "EXPORT", "Resolve · CapCut", (b) => b.append(exportBar(card, data.timeline)), true),
+      );
+    }
+    // One button to fold everything away on this page (folds, SFX scenes, any <details>).
+    const all = host.querySelectorAll("details");
+    if (all.length) {
+      const bar = el("div", "rc-secbar");
+      const ca = el("button", "rc-chip rc-closeall", "CLOSE ALL");
+      ca.title = "Close every open block on this page";
+      ca.onclick = () => host.querySelectorAll("details[open]").forEach((d) => { d.open = false; });
+      bar.append(ca);
+      host.prepend(bar);
+    }
   } catch (e) { host.innerHTML = ""; fail(e); }
 }
 
@@ -4961,7 +5311,26 @@ let SHELL_EP_DIR = null;
 let SHELL_VERSIONS = null;         // /api/episode/versions payload: takes + ledger
 let SHELL_POLL = null;
 let SHELL_BUSY = false;
-const INSP_OPEN = new Set(["frames", "generate", "takes"]);
+// Shawn, 2026-10-17: the production window has too much open at once, and a lot
+// of it had no way to close. Two rules now: (1) the six inspector sections start
+// closed except GENERATE, a sticky bar at the top of the inspector toggles any of
+// them (and "Close all"), and each open section ends with its own Close button;
+// (2) every block inside GENERATE is a FOLD: one visible header (title, a
+// one-line summary of what is inside, and an OPEN / CLOSE tag) that remembers
+// whether you left it open.
+const INSP_OPEN = new Set(["generate"]);
+const FOLD_STATE = (() => { try { return new Map(Object.entries(JSON.parse(localStorage.getItem("rcFolds") || "{}"))); } catch { return new Map(); } })();
+function foldSave() { try { localStorage.setItem("rcFolds", JSON.stringify(Object.fromEntries(FOLD_STATE))); } catch { /* private window */ } }
+function fold(key, title, summary, build, openDefault = false) {
+  const d = el("details", "rc-fold"); d.dataset.fold = key;
+  d.open = FOLD_STATE.has(key) ? FOLD_STATE.get(key) : openDefault;
+  d.ontoggle = () => { FOLD_STATE.set(key, d.open); foldSave(); };
+  const sm = el("summary");
+  sm.append(el("span", "t", title), el("span", "s", summary || ""), el("span", "x"));
+  d.append(sm);
+  const b = el("div", "rc-foldb"); build(b); d.append(b);
+  return d;
+}
 try {
   const s = JSON.parse(localStorage.getItem("rcs-shell") || "{}");
   if (["pre", "prod", "post"].includes(s.stage)) STAGE = s.stage;
@@ -5246,22 +5615,46 @@ function inspector(shot) {
   const h1 = el("div", "rc-h1");
   h1.append(el("span", null, `SHOT ${shotCode(shot)}`), el("span", null, [shot.size, shot.move, EP.fmt].filter(Boolean).join(" · ").toUpperCase()));
   a.append(h1);
-  a.append(el("h2", "rc-h2", shot.label || shot.action || "(untitled shot)"));
+  const nameBox = el("div", "rc-name");
+  const nameIn = inlineEdit(shot.label, async (v) => {
+    await post("/api/episode/shot/update", { dir: EP.dir, shotId: shot.id, patch: { label: v } });
+    await reloadEpisode(shot.id);
+  }, { placeholder: shot.action || "Name this shot…" });
+  nameIn.classList.add("rc-h2");
+  nameIn.title = "Click to name this shot";
+  nameBox.append(nameIn, el("div", "rc-namehint", shot.label ? "Click the name to rename it. Enter saves." : "Type a name for this shot and press Enter."));
+  a.append(nameBox);
+  if (NAME_FOCUS === shot.id) {
+    NAME_FOCUS = null;
+    setTimeout(() => { nameIn.focus({ preventScroll: true }); nameIn.select(); }, 0);
+  }
   a.append(flowSummary(shot, p));
   a.append(costBlock(shot));
+  const secBar = el("div", "rc-secbar");
+  a.append(secBar);
+  const secEls = {};
 
   const sec = (key, title, meta, build) => {
     const d = el("details", "rc-sec");
     d.dataset.sec = key;
     d.open = INSP_OPEN.has(key);
-    d.ontoggle = () => { if (d.open) INSP_OPEN.add(key); else INSP_OPEN.delete(key); };
+    d.ontoggle = () => { if (d.open) INSP_OPEN.add(key); else INSP_OPEN.delete(key); syncSecBar(); };
     const sm = el("summary"); sm.append(el("span", null, title));
     const m = el("span", "meta"); if (meta) m.append(meta); sm.append(m);
     d.append(sm);
-    const body = el("div", "rc-secb rc-legacy"); build(body); d.append(body);
+    const body = el("div", "rc-secb rc-legacy"); build(body);
+    // A visible way to close it from the bottom, without scrolling back to the header.
+    const cl = el("button", "rc-closesec", `▲ Close ${title.toLowerCase()}`);
+    cl.onclick = () => { d.open = false; d.scrollIntoView({ block: "nearest" }); };
+    body.append(cl);
+    d.append(body);
     a.append(d);
+    secEls[key] = d;
     return d;
   };
+  const SEC_BAR = [["frames", "STORYBOARDS"], ["refvideo", "REF VIDEO"], ["generate", "GENERATE"], ["prompt", "PROMPT"], ["shot", "DETAILS"], ["blocking", "BLOCKING"]];
+  const barChips = {};
+  const syncSecBar = () => SEC_BAR.forEach(([k]) => { if (barChips[k] && secEls[k]) barChips[k].classList.toggle("on", secEls[k].open); });
 
   const kf = kfOf(shot);
   sec("frames", "STORYBOARDS", `${st.appr}/${st.boards} APPROVED`, (b) => {
@@ -5285,6 +5678,33 @@ function inspector(shot) {
   const axis = episodeAxisWarnings(EP.shots || []).some((w) => w.shotACode === shotCode(shot) || w.shotBCode === shotCode(shot));
   const bm = el("span", axis ? "warn" : shot.blockingInPrompt ? "on" : null, !shot.blocking ? "NOT SET" : `${axis ? "CHECK 180° LINE" : "AXIS OK"}${shot.blockingInPrompt ? " · IN PROMPT" : ""}`);
   sec("blocking", "BLOCKING", bm, (b) => { b.append(blockingPromptToggle(shot)); b.append(blockingWidget(shot)); });
+  // The sticky bar: toggle any section from wherever you have scrolled to, or close the lot.
+  SEC_BAR.forEach(([k, label]) => {
+    const b = el("button", "rc-chip", label);
+    b.title = `Open or close ${label.toLowerCase()}`;
+    b.onclick = () => {
+      const d = secEls[k]; if (!d) return;
+      d.open = !d.open;
+      if (d.open) d.scrollIntoView({ block: "start", behavior: "smooth" });
+    };
+    barChips[k] = b; secBar.append(b);
+  });
+  const closeAll = el("button", "rc-chip rc-closeall", "CLOSE ALL");
+  closeAll.title = "Close every section, every open block inside them, any image picker and the reference manager";
+  closeAll.onclick = () => {
+    // Update what is remembered FIRST: a re-render below reads it before the
+    // browser has fired the toggle events.
+    INSP_OPEN.clear();
+    Object.values(secEls).forEach((d) => { d.open = false; });
+    a.querySelectorAll("details.rc-fold").forEach((d) => { d.open = false; FOLD_STATE.set(d.dataset.fold, false); });
+    foldSave();
+    a.querySelectorAll("details.board").forEach((d) => { d.open = false; });
+    const needRender = OPEN_PICKERS.size > 0 || OPEN_REF_MANAGERS.size > 0 || OPEN_BOARD_ROWS.size > 0;
+    OPEN_PICKERS.clear(); OPEN_REF_MANAGERS.clear(); OPEN_BOARD_ROWS.clear();
+    if (needRender) withShotAnchor(shot.id, renderEpisode);
+  };
+  secBar.append(closeAll);
+  syncSecBar();
   fillTakes(a);
   return a;
 }
@@ -5463,6 +5883,8 @@ document.addEventListener("keydown", (e) => {
   const t = e.target;
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
   if (e.key === "Escape" && (SETTINGS_OPEN || BATCH_OPEN || RATES_OPEN)) { SETTINGS_OPEN = BATCH_OPEN = RATES_OPEN = false; renderEpisode(); return; }
+  // Next Escape: the page's own CLOSE ALL (shot inspector, vault card, Post page).
+  if (e.key === "Escape") { const ca = document.querySelector(".rc-closeall"); if (ca) { e.preventDefault(); ca.click(); } return; }
   if (STAGE !== "prod") return;
   const groups = sceneGroups().filter((g) => g.num !== CUT_SCENE || g.shots.length);
   if (e.key === "[" || e.key === "]") {
@@ -5838,16 +6260,31 @@ function vaultInspector(group) {
   });
   a.append(strip);
 
+  // Same pattern as the shot inspector: a sticky chip per section, CLOSE ALL,
+  // and a close button at the end of each open section.
+  const vSecBar = el("div", "rc-secbar");
+  a.append(vSecBar);
+  const vSecEls = {}, vChips = {};
+  const syncVBar = () => Object.keys(vChips).forEach((k) => vChips[k].classList.toggle("on", !!(vSecEls[k] && vSecEls[k].open)));
   const sec = (k, title, meta, build) => {
     const d = el("details", "rc-sec");
     d.dataset.sec = k;
     d.open = VAULT_OPEN.has(k);
-    d.ontoggle = () => { if (d.open) VAULT_OPEN.add(k); else VAULT_OPEN.delete(k); };
+    d.ontoggle = () => { if (d.open) VAULT_OPEN.add(k); else VAULT_OPEN.delete(k); syncVBar(); };
     const sm = el("summary"); sm.append(el("span", null, title));
     const m = el("span", "meta"); if (meta) m.append(meta); sm.append(m);
     d.append(sm);
-    const b = el("div", "rc-secb rc-legacy"); build(b); d.append(b);
+    const b = el("div", "rc-secb rc-legacy"); build(b);
+    const cl = el("button", "rc-closesec", `▲ Close ${title.toLowerCase()}`);
+    cl.onclick = () => { d.open = false; d.scrollIntoView({ block: "nearest" }); };
+    b.append(cl);
+    d.append(b);
     a.append(d);
+    vSecEls[k] = d;
+    const chip = el("button", "rc-chip", title.split(" · ")[0].split(" & ")[0]);
+    chip.title = `Open or close ${title.toLowerCase()}`;
+    chip.onclick = () => { d.open = !d.open; if (d.open) d.scrollIntoView({ block: "start", behavior: "smooth" }); };
+    vChips[k] = chip; vSecBar.append(chip);
   };
 
   const empties = group.filter((x) => !x.path);
@@ -5871,6 +6308,11 @@ function vaultInspector(group) {
     b.append(el("div", "rc-anglehd", (x.angle || "main").toUpperCase()));
     b.append(assetEditor(x, group));
   }));
+  const vClose = el("button", "rc-chip rc-closeall", "CLOSE ALL");
+  vClose.title = "Close every section on this card";
+  vClose.onclick = () => { VAULT_OPEN.clear(); Object.values(vSecEls).forEach((d) => { d.open = false; }); syncVBar(); };
+  vSecBar.append(vClose);
+  syncVBar();
   return a;
 }
 

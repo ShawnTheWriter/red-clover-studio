@@ -1,6 +1,6 @@
 // fal.ai driver — video generation via the queue API.
 //
-// The flow this implements is the one proven on 2026-09-10 (a real series
+// The flow this implements is the one proven on 2026-09-10 (Man in the Glass
 // street beat, Arm B), not a generic image-to-video call:
 //   1. downscale the keyframe to 768px wide — the model renders at 768P base
 //      anyway and full-size files are too large to pass inline
@@ -19,7 +19,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { BaseDriver } from "./base.js";
-import { videoModel } from "../rates.js";
+import { videoModel, upscaleModel } from "../rates.js";
 
 const run = promisify(execFile);
 
@@ -161,6 +161,38 @@ export class FalDriver extends BaseDriver {
       body: JSON.stringify({ video_url: videoUrl, audio_url: audioUrl, sync_mode: syncMode || "cut_off" }),
     });
     if (!res.ok) throw new Error(`fal lip-sync submit failed: ${res.status} ${await res.text()}`);
+    const out = await res.json();
+    return {
+      jobId: out.request_id,
+      statusUrl: out.status_url || `${QUEUE_BASE}/${modelId}/requests/${out.request_id}/status`,
+      responseUrl: out.response_url || `${QUEUE_BASE}/${modelId}/requests/${out.request_id}`,
+    };
+  }
+
+  // Upscale a finished clip to `target` (1080p). The request body differs per
+  // model, so it is built here from the rates.js row; the queue, polling and
+  // download afterwards are the same as any other video job. `fps` is the
+  // SOURCE frame rate: Bytedance is asked for it explicitly (its default is 30,
+  // which would re-time a 24 fps take); SeedVR2 has no such field and is
+  // corrected afterwards in jobs.js.
+  async generateUpscale({ videoPath, modelId, target = "1080p", fps = 24 }) {
+    if (!this.key) throw new Error("FAL_KEY not set");
+    const m = upscaleModel(modelId);
+    if (!m) throw new Error(`unknown upscale model "${modelId}"`);
+    const videoUrl = await this.uploadFile(videoPath);
+    let input;
+    if (modelId.includes("seedvr")) {
+      input = { video_url: videoUrl, upscale_mode: "target", target_resolution: target, output_quality: "high" };
+    } else if (modelId.includes("bytedance-upscaler")) {
+      input = {
+        video_url: videoUrl, target_resolution: target, target_fps: Math.min(120, Math.max(24, Math.round(Number(fps) || 24))),
+        enhancement_preset: "aigc", enhancement_tier: "standard", fidelity: "high",
+      };
+    } else {
+      throw new Error(`no request mapping for upscale model "${modelId}"`);
+    }
+    const res = await fetch(`${QUEUE_BASE}/${modelId}`, { method: "POST", headers: this.headers(), body: JSON.stringify(input) });
+    if (!res.ok) throw new Error(`fal upscale submit failed: ${res.status} ${await res.text()}`);
     const out = await res.json();
     return {
       jobId: out.request_id,

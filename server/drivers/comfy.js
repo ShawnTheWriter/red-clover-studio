@@ -137,13 +137,15 @@ export class ComfyDriver extends BaseDriver {
     return this.#still(parts, { endpoint, fmt, outPath });
   }
 
-  async generateVideo({ imagePath, endImagePath, referencePaths, referenceVideoPaths, aspectRatio, prompt, seconds, modelId }) {
+  async generateVideo({ imagePath, endImagePath, referencePaths, referenceVideoPaths, aspectRatio, prompt, seconds, modelId, audio }) {
     if (!this.key) throw new Error("COMFY_UI_API_KEY not set");
     const vm = videoModel(modelId) || {};
     const c = vm.comfy;
     if (!c) throw new Error(`${modelId} has no Comfy settings in rates.js`);
     const content = [{ type: "text", text: prompt }];
     const fixed = { ...(c.fixed || {}) };
+    // Sound off (Seedance rows only: `audioSwitch`). Whether Comfy prices sound separately is unverified.
+    if (audio === false && vm.audioSwitch) fixed.generate_audio = false;
     if (vm.inputMode === "reference") {
       for (const p of referencePaths || []) {
         content.push({ type: "image_url", role: "reference_image", image_url: { url: await dataUri(await local.prepareReference(p, 1280, 2.5)) } });

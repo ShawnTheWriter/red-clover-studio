@@ -19,7 +19,7 @@
 
 import { BaseDriver } from "./base.js";
 import { FalDriver } from "./fal.js";
-import { videoModel } from "../rates.js";
+import { videoModel, finishModel } from "../rates.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -75,12 +75,14 @@ export class AtlasDriver extends BaseDriver {
     return url;
   }
 
-  async generateVideo({ imagePath, endImagePath, referencePaths, referenceVideoPaths, aspectRatio, prompt, seconds, modelId }) {
+  async generateVideo({ imagePath, endImagePath, referencePaths, referenceVideoPaths, aspectRatio, prompt, seconds, modelId, audio }) {
     if (!this.key) throw new Error("ATLAS_API_KEY not set");
     const vm = videoModel(modelId) || {};
     const a = vm.atlas;
     if (!a) throw new Error(`${modelId} has no Atlas settings in rates.js`);
     const body = { model: a.model, prompt, duration: Number(seconds), ...(a.fixed || {}) };
+    // Sound off: the same price, no generated audio (Shawn heard a warble).
+    if (audio === false && vm.audioSwitch) body.generate_audio = false;
     let uploaded = {};
     if (vm.inputMode === "reference") {
       const imgs = [];
@@ -111,6 +113,25 @@ export class AtlasDriver extends BaseDriver {
     const id = out && out.data && out.data.id;
     if (!id) throw new Error(`Atlas submit returned no prediction id: ${JSON.stringify(out).slice(0, 300)}`);
     return { jobId: id, statusUrl: `${this.base}/model/prediction/${id}`, responseUrl: null, ...uploaded };
+  }
+
+  // Finish a draft at 1080p: only the draft's id is sent. Atlas's finish
+  // inherits the draft's prompt, inputs, duration, ratio, seed and audio.
+  async generateFinish({ draftId, modelId }) {
+    if (!this.key) throw new Error("ATLAS_API_KEY not set");
+    const m = finishModel(modelId);
+    if (!m) throw new Error(`unknown finish model "${modelId}"`);
+    if (!draftId) throw new Error("no draft id to finish");
+    const res = await this.fetch(`${this.base}/model/generateVideo`, {
+      method: "POST",
+      headers: this.headers({ "content-type": "application/json" }),
+      body: JSON.stringify({ model: m.atlasModel, draft_id: draftId }),
+    });
+    if (!res.ok) throw new Error(`Atlas finish failed: ${res.status} ${await res.text()}`);
+    const out = await res.json();
+    const id = out && out.data && out.data.id;
+    if (!id) throw new Error(`Atlas finish returned no prediction id: ${JSON.stringify(out).slice(0, 300)}`);
+    return { jobId: id, statusUrl: `${this.base}/model/prediction/${id}`, responseUrl: null };
   }
 
   async getJob({ jobId, statusUrl }) {

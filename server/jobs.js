@@ -19,7 +19,10 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import * as store from "./store.js";
-import { estimateVideoUSD, videoModel, estimateImageUSD, imageModel, estimateLipsyncUSD, lipsyncModel, LIPSYNC_SYNC_MODES, modelShort, referenceUSD, refVideoUSD, cheapestRoute } from "./rates.js";
+import { estimateVideoUSD, videoModel, estimateImageUSD, imageModel, estimateLipsyncUSD, lipsyncModel, LIPSYNC_SYNC_MODES, modelShort, referenceUSD, refVideoUSD, cheapestRoute, upscaleModel, estimateUpscaleUSD, UPSCALE_TARGETS, finishModel, estimateFinishUSD, FINISH_MODELS } from "./rates.js";
+import { probe } from "./ffprobe.js";
+import { trimmedCopy, normalizeUpscaled } from "./upscale.js";
+import { trimSpans, spansDuration, isWholeTake } from "../shared/trim.js";
 import { readSettings } from "./settings.js";
 import { FalDriver } from "./drivers/fal.js";
 import { GeminiDriver } from "./drivers/gemini.js";
@@ -318,7 +321,7 @@ export function driverForModel(modelId, requested = "fal") {
   return (videoModel(modelId) || {}).driver || requested;
 }
 
-function commitFanOut(ep, { shotIds, modelIds, seconds, driver: requested = "fal", confirmedUSD }) {
+function commitFanOut(ep, { shotIds, modelIds, seconds, driver: requested = "fal", confirmedUSD, audio }) {
   const q = quote(ep, { shotIds, modelIds, seconds });
 
   enforceSpendGuards(q, confirmedUSD);
@@ -375,6 +378,8 @@ function commitFanOut(ep, { shotIds, modelIds, seconds, driver: requested = "fal
       modelLabel: line.modelLabel,
       driver,
       ...(line.routedFrom ? { routedFrom: line.routedFrom } : {}),
+      // Sound off, only on models that have the switch (same price either way).
+      ...(audio === false && vm.audioSwitch ? { audio: false } : {}),
       seconds: line.seconds,
       keyframePath: keyframe ? keyframe.path : null,
       endKeyframePath: endFrame ? endFrame.path : null,
@@ -511,6 +516,202 @@ export async function submitLipsync(dir, opts) {
   // Same atomic check-and-commit as a fan-out: quote, cap test and reservation
   // under one episode write lock.
   const { version, q } = await store.withEpisode(dir, (ep) => commitLipsync(ep, opts));
+  pending.push({ dir, versionId: version.id, shotId: version.shotId });
+  pump();
+  return { quote: q, version };
+}
+
+// ---------- finish a draft (a take made from a take) ----------
+//
+// An Atlas Seedance 2.5 draft (480p) can be finished at 1080p within 7 days:
+// the final inherits the draft's prompt, images, duration, ratio, seed and
+// sound, so only the draft's id is sent. A NEW take (op "finish"), through the
+// same queue, ledger and spend guards; never auto-selected. The quote shows the
+// finish price, what the draft already cost, and the days left.
+
+function finishInputs(ep, { versionId, modelId = FINISH_MODELS[0].id }) {
+  const hit = findTake(ep, versionId);
+  if (!hit) throw Object.assign(new Error("take not found"), { status: 404 });
+  const { shot, take } = hit;
+  if (take.state !== "done" || !take.path) throw Object.assign(new Error("that take hasn't finished"), { status: 400 });
+  const row = videoModel(take.modelId) || {};
+  if (!take.draftId || !row.draft) throw Object.assign(new Error("only an Atlas 480p draft can be finished at 1080p"), { status: 400 });
+  const model = finishModel(modelId);
+  if (!model) throw Object.assign(new Error(`unknown finish model "${modelId}"`), { status: 400 });
+  // A free rehearsal (mock driver) finishes as a rehearsal; a real draft only where it was made.
+  if (model.driver !== take.driver && take.driver !== "mock") throw Object.assign(new Error(`that draft was made on ${take.driver}; it can only be finished there`), { status: 400 });
+  const expires = take.draftExpiresAt ? Date.parse(take.draftExpiresAt) : NaN;
+  if (Number.isFinite(expires) && Date.now() > expires) {
+    throw Object.assign(new Error(`this draft stopped being finishable on ${take.draftExpiresAt.slice(0, 10)} (7 days after it was made). Run it again as a draft.`), { status: 400 });
+  }
+  const seconds = Number(take.seconds);
+  if (!Number.isFinite(seconds) || seconds <= 0) throw Object.assign(new Error("this draft has no usable duration to price a finish against"), { status: 400 });
+  return { shot, take, model, seconds, expires: Number.isFinite(expires) ? take.draftExpiresAt : null };
+}
+
+export function quoteFinish(ep, opts) {
+  const { take, model, seconds, expires } = finishInputs(ep, opts);
+  const est = estimateFinishUSD(model.id, seconds);
+  const totalUSD = round2(est.usd);
+  const draftUSD = round2(take.actualUSD != null ? take.actualUSD : (take.estimateUSD || 0));
+  const led = ledgerState(ep);
+  return {
+    versionId: take.id, modelId: model.id, modelLabel: model.label, target: model.target,
+    seconds, totalUSD, estimateUSD: totalUSD, confidence: est.confidence, rate: est.rate,
+    draftUSD, bothUSD: round2(draftUSD + totalUSD), expiresAt: expires,
+    daysLeft: expires ? Math.max(0, Math.ceil((Date.parse(expires) - Date.now()) / 864e5)) : null,
+    ledger: led,
+    fitsInBudget: totalUSD <= led.remainingUSD,
+    needsConfirmation: totalUSD > led.confirmAboveUSD,
+  };
+}
+
+function commitFinish(ep, opts) {
+  const { confirmedUSD } = opts;
+  const { shot, take, model, seconds } = finishInputs(ep, opts);
+  const driver = take.driver === "mock" ? "mock" : (opts.driver || "atlas");
+  const q = quoteFinish(ep, opts);
+  enforceSpendGuards(q, confirmedUSD);
+  const d = drivers[driver];
+  if (!d) throw new Error(`unknown driver "${driver}"`);
+  const st = d.status();
+  if (!st.ready) throw Object.assign(new Error(`driver "${driver}" not ready: ${st.reason}`), { status: 503 });
+  const billable = d.billable !== false;
+  const version = {
+    id: uid(),
+    shotId: shot.id,
+    op: "finish",
+    sourceVersionId: take.id,
+    sourcePath: take.path,
+    draftId: take.draftId,
+    target: model.target,
+    modelId: model.id,
+    modelLabel: `Finish ${model.target} (Atlas) — ${take.modelLabel || "draft"}`,
+    driver,
+    seconds,
+    prompt: take.prompt || null,    // inherited from the draft; shown under "Prompt sent"
+    keyframePath: null,
+    billable,
+    estimateUSD: billable ? q.estimateUSD : 0,
+    quotedUSD: q.estimateUSD,
+    estimateConfidence: q.confidence,
+    actualUSD: null,
+    state: "queued",
+    error: null,
+    jobId: null,
+    path: null,
+    submittedAt: new Date().toISOString(),
+    finishedAt: null,
+    elapsedMs: null,
+  };
+  shot.versions = shot.versions || [];
+  shot.versions.push(version);
+  return { version, q };
+}
+
+export async function submitFinish(dir, opts) {
+  const { version, q } = await store.withEpisode(dir, (ep) => commitFinish(ep, opts));
+  pending.push({ dir, versionId: version.id, shotId: version.shotId });
+  pump();
+  return { quote: q, version };
+}
+
+// ---------- upscale (a take made from a take) ----------
+//
+// Same shape as lip sync: an EXISTING done take in, a NEW take out, `op:
+// "upscale"`, never auto-selected, a paid take for Undo purposes. Priced on the
+// seconds actually sent: when the take has a trim (the part used in the cut)
+// only that span is cut out and upscaled, so the unused seconds cost nothing.
+
+function upscaleInputs(ep, { versionId, modelId, target = "1080p", useTrim = true }) {
+  const hit = findTake(ep, versionId);
+  if (!hit) throw Object.assign(new Error("take not found"), { status: 404 });
+  const { shot, take } = hit;
+  if (take.state !== "done" || !take.path) {
+    throw Object.assign(new Error("that take hasn't finished — upscaling needs a finished video"), { status: 400 });
+  }
+  const model = upscaleModel(modelId);
+  if (!model) throw Object.assign(new Error(`unknown upscale model "${modelId}"`), { status: 400 });
+  if (!UPSCALE_TARGETS.includes(target)) {
+    throw Object.assign(new Error(`upscale target must be one of ${UPSCALE_TARGETS.join(", ")}`), { status: 400 });
+  }
+  const full = Number(take.seconds);
+  if (!Number.isFinite(full) || full <= 0) {
+    throw Object.assign(new Error("this take has no usable duration to price an upscale against"), { status: 400 });
+  }
+  // Only the kept pieces are sent (and paid for): the take's in/out minus its
+  // cut-outs. spans = null means the whole take.
+  let spans = null;
+  let seconds = full;
+  const t = shot.takeTrims && shot.takeTrims[take.id];
+  if (useTrim && t) {
+    const kept = trimSpans(t, full);
+    if (!kept.length) throw Object.assign(new Error("this take's marks leave no video to upscale"), { status: 400 });
+    if (!isWholeTake(kept, full)) { spans = kept; seconds = spansDuration(kept); }
+  }
+  return { shot, take, model, target, spans, seconds, fps: Number(take.fps) || 24 };
+}
+
+export function quoteUpscale(ep, opts) {
+  const { take, model, target, spans, seconds, fps } = upscaleInputs(ep, opts);
+  const est = estimateUpscaleUSD(model.id, { seconds, fps, target });
+  const totalUSD = round2(est.usd);
+  const led = ledgerState(ep);
+  return {
+    versionId: take.id, modelId: model.id, modelLabel: model.label, target, spans,
+    seconds: Math.round(seconds * 100) / 100, fullSeconds: Number(take.seconds),
+    totalUSD, estimateUSD: totalUSD, confidence: est.confidence, rate: est.rate,
+    ledger: led,
+    fitsInBudget: totalUSD <= led.remainingUSD,
+    needsConfirmation: totalUSD > led.confirmAboveUSD,
+  };
+}
+
+function commitUpscale(ep, opts) {
+  const { driver = "fal", confirmedUSD } = opts;
+  const { shot, take, model, target, spans, seconds } = upscaleInputs(ep, opts);
+  const q = quoteUpscale(ep, opts);
+  enforceSpendGuards(q, confirmedUSD);
+
+  const d = drivers[driver];
+  if (!d) throw new Error(`unknown driver "${driver}"`);
+  const st = d.status();
+  if (!st.ready) throw Object.assign(new Error(`driver "${driver}" not ready: ${st.reason}`), { status: 503 });
+  const billable = d.billable !== false;
+
+  const version = {
+    id: uid(),
+    shotId: shot.id,
+    op: "upscale",
+    sourceVersionId: take.id,
+    sourcePath: take.path,          // survives the source take being deleted mid-run
+    spans,                          // the kept pieces [{ inSec, outSec }]; null = the whole take
+    target,
+    modelId: model.id,
+    modelLabel: `Upscale ${target} (${model.label}) — ${take.modelLabel || "take"}`,
+    driver,
+    seconds,
+    keyframePath: null,
+    billable,
+    estimateUSD: billable ? q.estimateUSD : 0,
+    quotedUSD: q.estimateUSD,
+    estimateConfidence: q.confidence,
+    actualUSD: null,
+    state: "queued",
+    error: null,
+    jobId: null,
+    path: null,
+    submittedAt: new Date().toISOString(),
+    finishedAt: null,
+    elapsedMs: null,
+  };
+  shot.versions = shot.versions || [];
+  shot.versions.push(version);
+  return { version, q };
+}
+
+export async function submitUpscale(dir, opts) {
+  const { version, q } = await store.withEpisode(dir, (ep) => commitUpscale(ep, opts));
   pending.push({ dir, versionId: version.id, shotId: version.shotId });
   pump();
   return { quote: q, version };
@@ -838,6 +1039,30 @@ async function runVersion({ dir, versionId, reattach = false }) {
         state: "running", jobId: sub.jobId, statusUrl: sub.statusUrl, responseUrl: sub.responseUrl,
       });
       version.jobId = sub.jobId;
+    } else if (version.op === "finish") {
+      if (typeof d.generateFinish !== "function") throw new Error(`driver "${version.driver}" can't finish a draft`);
+      sub = await d.generateFinish({ draftId: version.draftId, modelId: version.modelId });
+      await updateVersion(dir, versionId, {
+        state: "running", jobId: sub.jobId, statusUrl: sub.statusUrl, responseUrl: sub.responseUrl,
+      });
+      version.jobId = sub.jobId;
+    } else if (version.op === "upscale") {
+      if (typeof d.generateUpscale !== "function") throw new Error(`driver "${version.driver}" can't upscale`);
+      const srcAbs = store.safeResolve(version.sourcePath);
+      let fps = 24;
+      try { fps = (await probe(srcAbs)).fps || 24; } catch { /* the quote's 24 fps stands */ }
+      let sendPath = srcAbs, tmp = null;
+      // Only the part used in the cut is sent (and paid for).
+      if (version.spans && version.driver !== "mock") tmp = sendPath = await trimmedCopy(srcAbs, version.spans);
+      try {
+        sub = await d.generateUpscale({ videoPath: sendPath, modelId: version.modelId, target: version.target, fps });
+      } finally {
+        if (tmp) await fs.rm(tmp, { force: true });
+      }
+      await updateVersion(dir, versionId, {
+        state: "running", jobId: sub.jobId, statusUrl: sub.statusUrl, responseUrl: sub.responseUrl,
+      });
+      version.jobId = sub.jobId;
     } else {
       // A frozen reference prompt means a reference model (an H3 Max
       // references take with no vault images still has its frozen prompt).
@@ -854,6 +1079,7 @@ async function runVersion({ dir, versionId, reattach = false }) {
         prompt,
         seconds: version.seconds,
         modelId: version.modelId,
+        audio: version.audio,
       });
       await updateVersion(dir, versionId, {
         state: "running", jobId: sub.jobId, statusUrl: sub.statusUrl, responseUrl: sub.responseUrl, prompt,
@@ -874,7 +1100,20 @@ async function runVersion({ dir, versionId, reattach = false }) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       const st = await d.getJob({ jobId: sub.jobId, modelId: version.modelId, statusUrl: sub.statusUrl, responseUrl: sub.responseUrl });
       if (st.state === "error") {
-        await failVersion(dir, version, st.error, started);
+        // fal answers 422 at the RESULT when the model itself refuses the inputs
+        // (a content refusal: for Seedance, usually a realistic face in a
+        // reference image). Those are not billed (Shawn's fal usage CSV,
+        // 2026-10-07; Oct 16 Seedance 2.0 Fast refusal: same), so they are not
+        // charged to the ledger either, and the message says what it probably is.
+        const refused = /^result 422\b/.test(String(st.error || ""));
+        await failVersion(
+          dir, version,
+          refused
+            ? `fal's model refused these inputs (422), so nothing was billed. For Seedance this is usually a realistic face in a reference image: the Atlas rows accept them. fal said: ${String(st.error).slice(0, 500)}`
+            : st.error,
+          started,
+          refused ? { charge: false } : {},
+        );
         return;
       }
       if (st.state !== "done") continue;
@@ -884,7 +1123,31 @@ async function runVersion({ dir, versionId, reattach = false }) {
       const destAbs = store.safeResolve(dir, TAKES_SUBDIR, filename);
       await d.download(st.result.videoUrl, destAbs);
 
+      // An upscale is conformed to its source (frame rate, exact size, audio).
+      // A failure here never loses the paid-for file: it is kept as returned.
+      let upscaleNote = null;
+      if (version.op === "upscale" && version.driver !== "mock") {
+        let conformSrc = null;
+        try {
+          // The file that was sent: the take, or the pieces cut from it. Its
+          // frame rate, shape and sound are what the result must match.
+          const takeAbs = store.safeResolve(version.sourcePath);
+          if (version.spans) conformSrc = await trimmedCopy(takeAbs, version.spans);
+          const c = await normalizeUpscaled(destAbs, { srcAbs: conformSrc || takeAbs, target: version.target });
+          const parts = [c.fps && "frame rate", c.size && "size", c.audio && "audio"].filter(Boolean);
+          if (parts.length) upscaleNote = `matched to the source take: ${parts.join(", ")}`;
+        } catch (err) {
+          upscaleNote = `kept as returned (could not match it to the source take: ${err.message})`;
+        } finally {
+          if (conformSrc) await fs.rm(conformSrc, { force: true });
+        }
+      }
+
+      // A draft take remembers its id and when it stops being finishable.
+      const isDraft = !!(videoModel(version.modelId) || {}).draft && !version.op;
       const patch = {
+        ...(isDraft ? { draftId: version.jobId, draftExpiresAt: new Date(Date.now() + 7 * 864e5).toISOString() } : {}),
+        ...(upscaleNote ? { upscaleNote } : {}),
         state: "done",
         path: store.relToRoot(destAbs),
         actualUSD: st.result.actualUSD ?? null,

@@ -54,6 +54,18 @@ export class MockDriver extends BaseDriver {
     return { jobId, statusUrl: null, responseUrl: null };
   }
 
+  async generateFinish({ modelId }) {
+    const jobId = `mock_fin_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    jobs.set(jobId, { startedAt: Date.now(), willFail: Math.random() < this.failRate, modelId });
+    return { jobId, statusUrl: null, responseUrl: null };
+  }
+
+  async generateUpscale({ modelId }) {
+    const jobId = `mock_up_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    jobs.set(jobId, { startedAt: Date.now(), willFail: Math.random() < this.failRate, modelId });
+    return { jobId, statusUrl: null, responseUrl: null };
+  }
+
   async getJob({ jobId }) {
     const j = jobs.get(jobId);
     if (!j) return { state: "error", error: "unknown mock job" };

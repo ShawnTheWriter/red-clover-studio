@@ -37,6 +37,16 @@ export class BaseDriver {
     throw new Error(`${this.name}: generateLipsync not supported`);
   }
 
+  // Finish a draft at 1080p. { draftId, modelId } -> { jobId, ... }, resolved via getJob().
+  async generateFinish() {
+    throw new Error(`${this.name}: generateFinish not supported`);
+  }
+
+  // Upscale a finished clip. { videoPath, modelId, target, fps } -> { jobId, ... }, resolved via getJob().
+  async generateUpscale() {
+    throw new Error(`${this.name}: generateUpscale not supported`);
+  }
+
   // Poll an async job. -> { state: queued|running|done|error, progress?, result?, error? }
   async getJob() {
     throw new Error(`${this.name}: getJob not supported`);

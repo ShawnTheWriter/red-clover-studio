@@ -85,6 +85,21 @@ check("failed → error with Atlas's reason", r3.state === "error" && /Invalid p
 await d.generateVideo({ referencePaths: [img, img], referenceVideoPaths: [path.join(os.tmpdir(), `rcs-atlas-src-${process.pid}.mp4`)], aspectRatio: "9:16", prompt: "@Image1 walks", seconds: 5, modelId: REF });
 const b2 = seen.submits[1];
 check("reference body: reference_images + reference_videos, ratio from the episode", b2.model === "bytedance/seedance-2.5/reference-to-video" && b2.reference_images.length === 2 && b2.reference_videos.length === 1 && b2.ratio === "9:16", JSON.stringify(b2));
+// Seedance 2.0 Fast / Mini on Atlas (2026-10-17): hyphenated ids, `ratio`, reference_images.
+const SD20F = "atlas:bytedance/seedance-2.0-fast/reference-to-video@480p";
+const SD20M = "atlas:bytedance/seedance-2.0-mini/image-to-video";
+check("Atlas Seedance 2.0 rows exist, on the atlas driver, priced from Atlas's list less 20%", videoModel(SD20F)?.driver === "atlas" && Math.abs(videoModel(SD20F).usdPerVideoSecond - 0.072) < 1e-9 && Math.abs(videoModel("atlas:bytedance/seedance-2.0-fast/reference-to-video").usdPerVideoSecond - 0.155) < 1e-9 && Math.abs(videoModel("atlas:bytedance/seedance-2.0-mini/reference-to-video@480p").usdPerVideoSecond - 0.045) < 1e-9);
+const nBefore = seen.submits.length;
+await d.generateVideo({ referencePaths: [img, img], aspectRatio: "9:16", prompt: "@Image1 stands", seconds: 10, modelId: SD20F, audio: false });
+const bf = seen.submits[nBefore];
+check("2.0 Fast references body: hyphenated model id, reference_images, ratio 9:16, 480p, integer 10 s, sound off", bf.model === "bytedance/seedance-2.0-fast/reference-to-video" && bf.reference_images.length === 2 && bf.ratio === "9:16" && bf.resolution === "480p" && bf.duration === 10 && bf.generate_audio === false && !("draft" in bf) && !("aspect_ratio" in bf), JSON.stringify(bf));
+await d.generateVideo({ imagePath: img, endImagePath: img, aspectRatio: "9:16", prompt: "turn", seconds: 5, modelId: SD20M });
+const bm = seen.submits[nBefore + 1];
+check("2.0 Mini frames body: image + last_image, adaptive ratio, 720p", bm.model === "bytedance/seedance-2.0-mini/image-to-video" && bm.image && bm.last_image && bm.ratio === "adaptive" && bm.resolution === "720p", JSON.stringify(bm));
+const { cheapestRoute } = await import("../server/rates.js");
+const toAtlas = cheapestRoute("bytedance/seedance-2.0/fast/reference-to-video@480p", () => true);
+check("a Seedance 2.0 Fast pick on fal moves to Atlas when Atlas is connected (fal $0.117/s vs $0.072/s)", toAtlas.routed && toAtlas.modelId === SD20F, JSON.stringify([toAtlas.modelId, toAtlas.options]));
+check("and stays on fal when Atlas is not connected", !cheapestRoute("bytedance/seedance-2.0/fast/reference-to-video@480p", (v) => v === "fal").routed);
 const bal = await d.balance();
 check("balance read ($0 on an unfunded account)", bal.usd === 0, JSON.stringify(bal));
 balanceReply = { status: 401, body: { error: { message: "bad key" } } };

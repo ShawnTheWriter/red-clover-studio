@@ -4,4 +4,7 @@ node_modules/
 .DS_Store
 .otio-venv/
 
+# Rejected icon drafts (the final icon is branding/RedCloverStudio.icns)
+branding/icon-concepts/*
+!branding/icon-concepts/FINAL_chatgpt_source.png
 .rcs-prices.json

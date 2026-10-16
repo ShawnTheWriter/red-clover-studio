@@ -109,8 +109,8 @@ async function listFiles(dir) {
 
 // ---------- discovery ----------
 
-// A bible is series.md, or anything matching "* series *.md"
-// (e.g. "My Show series bible.md"). .gdoc stubs are Google Drive
+// A bible is series.md, or anything matching "* series *.md" — Man in the Glass
+// calls its canon "Man in Glass series bible.md". .gdoc stubs are Google Drive
 // pointers, not content, and are ignored: the local markdown is authoritative.
 function findBible(files) {
   const md = files.filter((f) => f.toLowerCase().endsWith(".md"));
@@ -479,7 +479,7 @@ export async function writeText(relPath, text) {
 
 // ---------- generated-images inbox ----------
 //
-// Nano Banana's default output directory is `…/generated_imgs/` — a
+// Nano Banana's default output directory is `…/<workspace>/generated_imgs/` — a
 // SIBLING of the project root, not inside it (the skill's documented
 // workflow: "move/copy keepers into the production's 02_assets/ folder and
 // rename them"). That's a deliberate, narrow exception to the normal path
@@ -708,7 +708,7 @@ export async function listEarlierMedia(seriesRelDir, episodeRelDir, kind = "imag
 // "Find new images" in the Identity Vault: every image in any 02_assets/
 // folder of the series (the shared _RedClover/02_assets/ and each episode's
 // own) that this episode's vault doesn't use yet. Assets are spread across
-// those folders until a planned tidy, so the scan can't assume
+// those folders until the planned tidy (BACKLOG), so the scan can't assume
 // one place. A file whose size + extension matches a registered one is a copy
 // of it and is left out (same identity key as listEarlierMedia). Nothing is
 // linked here: Shawn picks each one in the UI. Replaces the September
