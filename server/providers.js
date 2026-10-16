@@ -26,6 +26,7 @@ export const PROVIDERS = [
   { id: "openrouter", name: "OpenRouter", category: "aggregator", env: "OPENROUTER_API_KEY", built: true, covers: "Claude (and other LLMs) on one bill · used when there's no direct Anthropic key", keyUrl: "https://openrouter.ai/keys" },
   { id: "replicate", name: "Replicate", category: "aggregator", env: "REPLICATE_API_TOKEN", built: false, covers: "Adapter not built yet" },
   { id: "atlas", name: "Atlas Cloud", category: "aggregator", env: "ATLAS_API_KEY", built: true, covers: "Video: Seedance 2.5 (start/end frames and references) at Atlas's prices · balance check", keyUrl: "https://www.atlascloud.ai/docs/api-keys" },
+  { id: "comfy", name: "Comfy Router", category: "aggregator", env: "COMFY_UI_API_KEY", built: true, covers: "Video: MiniMax H3 and Seedance 2.5 through Comfy's partner-model API · key check", keyUrl: "https://platform.comfy.org/login" },
   { id: "gemini", name: "Google Gemini (Nano Banana)", category: "image", env: "GEMINI_API_KEY", built: true, covers: "Storyboard stills and vault images", keyUrl: "https://aistudio.google.com/apikey" },
   { id: "openai", name: "OpenAI (GPT Image, direct)", category: "image", env: "OPENAI_API_KEY", built: false, covers: "Adapter not built yet · GPT Image is available through fal today" },
   { id: "elevenlabs", name: "ElevenLabs", category: "audio", env: "ELEVENLABS_API_KEY", built: true, covers: "Character voices and dialogue", keyUrl: "https://elevenlabs.io/app/settings/api-keys" },

@@ -1099,6 +1099,7 @@ function providerStatus(p) {
     note = !b ? "Connected · balance not checked yet" : b.error ? (/40[13]/.test(b.error) ? "Atlas rejected this key — check it and connect again" : `Connected · balance check failed (${b.error})`)
       : b.usd == null ? "Connected" : b.usd <= 0 ? "Connected · balance $0 — add credit at atlascloud.ai before generating" : `Connected · balance $${b.usd.toFixed(2)}`;
   }
+  else if (p.id === "comfy") { const st = jobs.drivers.comfy.status(); ready = st.ready; note = st.ready ? "Connected · costs show as estimates (Comfy sends no per-take charge)" : st.reason || ""; }
   else if (p.id === "elevenlabs") { const st = voice.voiceDrivers.elevenlabs.status(); ready = st.ready; note = st.ready ? "Connected" : st.reason || ""; }
   // fal's pricing check doubles as a key check: a 401 means fal refused the key.
   if (p.id === "fal" && key && (pricewatch.priceState().errors || []).some((e) => /fal pricing 401/.test(e))) { ready = false; note = "fal rejected this key — check it and connect again"; }
@@ -1109,7 +1110,7 @@ function providerStatus(p) {
 // Point the running drivers at a new (or no) key.
 function applyKey(p, value) {
   if (value) process.env[p.env] = value; else delete process.env[p.env];
-  if (p.id === "fal" || p.id === "gemini" || p.id === "atlas") jobs.drivers[p.id].key = value || "";
+  if (p.id === "fal" || p.id === "gemini" || p.id === "atlas" || p.id === "comfy") jobs.drivers[p.id].key = value || "";
   if (p.id === "elevenlabs") voice.voiceDrivers.elevenlabs.key = value || "";
   if (p.id === "anthropic") llm.resetClientForTests();
 }

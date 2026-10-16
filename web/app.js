@@ -1671,7 +1671,8 @@ function pickBest(models, want) {
 // connected service that sells the same model for less. The quote says so.
 let CHEAPEST_ROUTE = null; // null until /api/settings answers; the server default is on
 function loadRouteSetting() { if (CHEAPEST_ROUTE == null) api("/api/settings").then((s) => { CHEAPEST_ROUTE = s.cheapestRoute !== false; }).catch(() => {}); }
-const viaName = (id) => { const m = MODELS && MODELS.video && MODELS.video.find((x) => x.id === id); const v = (m && m.via) || "fal"; return v === "atlas" ? "Atlas" : v; };
+const VIA_NAMES = { atlas: "Atlas", comfy: "Comfy" };
+const viaName = (id) => { const m = MODELS && MODELS.video && MODELS.video.find((x) => x.id === id); const v = (m && m.via) || "fal"; return VIA_NAMES[v] || v; };
 function routeNote(q) {
   const moved = (q.lines || []).filter((l) => l.routedFrom);
   if (!moved.length) return null;
@@ -1730,9 +1731,9 @@ function videoModelPicker(models, curId, onPick) {
         CHEAPEST_ROUTE = r.cheapestRoute; onPick(cur.id);
       } catch (e) { fail(e); }
     };
-    rowOf("VIA", [auto, ...vias.map((m) => chip(`${(m.via || "fal") === "atlas" ? "Atlas" : "fal"} ${pickEst(m)}${pickMoney(m)}`, m.id === cur.id, m, ready(m.via || "fal") ? "" : `Connect ${m.via} in Connections first`))]);
+    rowOf("VIA", [auto, ...vias.map((m) => chip(`${VIA_NAMES[m.via || "fal"] || "fal"} ${pickEst(m)}${pickMoney(m)}`, m.id === cur.id, m, ready(m.via || "fal") ? "" : `Connect ${m.via} in Connections first`))]);
   }
-  if (!ready(cur.via || "fal")) box.append(el("div", "rc-muted warn", `${cur.via === "atlas" ? "Atlas Cloud" : cur.via} isn't connected — add its key in Connections (⚙︎) before generating.`));
+  if (!ready(cur.via || "fal")) box.append(el("div", "rc-muted warn", `${{ atlas: "Atlas Cloud", comfy: "Comfy" }[cur.via] || cur.via} isn't connected — add its key in Connections (⚙︎) before generating.`));
   return box;
 }
 

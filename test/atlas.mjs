@@ -64,7 +64,7 @@ const I2V = "atlas:bytedance/seedance-2.5/image-to-video", REF = "atlas:bytedanc
 
 console.log("model rows");
 check("Atlas rows exist and run on the atlas driver", videoModel(I2V)?.driver === "atlas" && videoModel(REF)?.driver === "atlas");
-check("fal rows have no driver set (stay on fal)", VIDEO_MODELS.filter((m) => !m.id.startsWith("atlas:")).every((m) => !m.driver));
+check("fal rows have no driver set (stay on fal)", VIDEO_MODELS.filter((m) => !m.id.startsWith("atlas:") && !m.id.startsWith("comfy:")).every((m) => !m.driver));
 check("routing: an Atlas row goes to atlas, a fal row to fal, a rehearsal stays mock", jobs.driverForModel(I2V, "fal") === "atlas" && jobs.driverForModel("minimax/h3/image-to-video", "fal") === "fal" && jobs.driverForModel(I2V, "mock") === "mock");
 
 console.log("\ndriver");

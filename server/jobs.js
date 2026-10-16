@@ -25,6 +25,7 @@ import { FalDriver } from "./drivers/fal.js";
 import { GeminiDriver } from "./drivers/gemini.js";
 import { ReplicateDriver } from "./drivers/replicate.js";
 import { AtlasDriver } from "./drivers/atlas.js";
+import { ComfyDriver } from "./drivers/comfy.js";
 import { MockDriver } from "./drivers/mock.js";
 import { nearestSellable } from "../shared/schema.js";
 import { resolveNano, refAssets, resolveVideoPrompt, resolveStartEndBeats, resolveReferencePrompt, resolveFramesRefPrompt, usableHold, refVideoSet } from "../shared/prompts.js";
@@ -64,6 +65,7 @@ export const drivers = {
   gemini: new GeminiDriver(),
   replicate: new ReplicateDriver(),
   atlas: new AtlasDriver(),
+  comfy: new ComfyDriver(),
   mock: new MockDriver(),
 };
 

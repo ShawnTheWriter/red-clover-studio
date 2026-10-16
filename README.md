@@ -54,7 +54,8 @@ assets. Start a new production or episode, or start a *remaster* from a Resolve 
 ![Connect services](docs/tour/01-connections.jpg)
 
 Add keys for the services you want, in one place: fal for video (MiniMax, Seedance, Kling, Wan),
-GPT Image, lip sync and sound effects; Atlas Cloud for Seedance at Atlas's prices; Google Gemini
+GPT Image, lip sync and sound effects; Atlas Cloud for Seedance at Atlas's prices; Comfy Router
+for MiniMax H3, Seedance and Nano Banana through Comfy's API; Google Gemini
 for Nano Banana stills; ElevenLabs for voices; Anthropic or OpenRouter for the Claude helpers.
 Keys stay on your computer and the app only ever shows their last four characters.
 
@@ -180,12 +181,48 @@ shows their last four characters.
 |---|---|---|
 | [fal](https://fal.ai) | Video (MiniMax H3 / H3 Max, Seedance 2.5 / 2.0, Kling, Wan), GPT Image, lip sync, sound effects | For video, yes |
 | [Atlas Cloud](https://www.atlascloud.ai) | Seedance 2.5 at Atlas's prices | Optional |
+| [Comfy Router](https://comfy.org/platform/router/) | MiniMax H3, Seedance 2.5 and Nano Banana stills through Comfy's partner-model API (see below) | Optional |
 | [Google Gemini](https://aistudio.google.com/apikey) | Storyboard and vault images (Nano Banana) | Recommended |
 | [ElevenLabs](https://elevenlabs.io) | Character voices | Optional |
 | [Anthropic](https://console.anthropic.com) or [OpenRouter](https://openrouter.ai) | Claude helpers (shot lists, holds, prompts) | Optional |
 
 Without any keys you can still write, board with your own images, import clips you already have,
 cut and export.
+
+## Run it on Comfy
+
+Red Clover can send video takes through the [Comfy Router](https://comfy.org/platform/router/),
+Comfy's single API for partner models, so one Comfy key and one credit balance pay for the shot.
+It was added for the Open Source Higgsfield challenge on the Comfy Developer Platform.
+
+1. Make a key at [platform.comfy.org](https://platform.comfy.org/login) (API Keys → + New) and add
+   credit in your Comfy workspace. Comfy sells credits at 211 per US dollar.
+2. Add the key under **⚙︎ → Connections → Comfy Router**, or put `COMFY_UI_API_KEY=...` in `.env`.
+3. In the video picker, choose **Comfy** in the VIA row. Comfy rows are opt-in: the cheapest-route
+   setting compares fal and Atlas only and never moves a take onto Comfy by itself. Comfy's prices are
+   typed in from its pricing page (read 2026-10-16), not checked live like fal's, and the app doesn't
+   read your Comfy balance.
+
+| Row | Mode | Price (Comfy's published rate) |
+|---|---|---|
+| MiniMax H3, 768P | Start frame | $0.1287 per second (measured: a 5 s take used 136 credits, $0.6445) |
+| MiniMax H3, 2K | Start frame | $0.1859 per second |
+| Seedance 2.5, 480p / 720p / 1080p | Start + end frames | about $0.33 per second at 720p (billed by token) |
+| Seedance 2.5, 720p | References (images and video) | about $0.36 per second, estimate |
+
+Storyboard and vault stills can run through Comfy too: pick **Nano Banana 2 · Comfy** or **Nano Banana Pro · Comfy**
+as the still model. They are billed by token (about $0.09 for a 1K Nano Banana 2 image), and Comfy bills
+refused prompts, so the app books them at a ceiling price.
+
+How it works: the driver is [server/drivers/comfy.js](server/drivers/comfy.js). It submits to
+`POST /v2/models/{provider}/{model}/requests`, polls `/status` until `COMPLETED`, fetches the
+result and downloads the clip before Comfy's signed link expires. Stills and reference videos go
+inline as data URIs, capped at the Router's 100 MiB request limit.
+
+Known gaps: the Router returns no per-take charge, so takes are booked at the price above and the
+spending cap works from that estimate. Check your Comfy balance to reconcile. H3 with a start
+frame is proven on the live service; Seedance 2.5 frames and references follow Comfy's model pages
+but have not been run live yet.
 
 ## Your files
 

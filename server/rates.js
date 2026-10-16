@@ -289,6 +289,66 @@ export const VIDEO_MODELS = [
     durations: range(4, 30),
     minDuration: 4,
   },
+  // ---- Comfy Router (driver "comfy"; Shawn, 2026-10-16) ----
+  // For the Open Source Higgsfield challenge (needs the Comfy Developer
+  // Platform). Prices from Comfy's Router pricing page, read 2026-10-16
+  // (211 credits = $1): MiniMax H3 $0.1287/s at 768P and $0.1859/s at 2K;
+  // Seedance 2.5 image-to-video $15.301 per 1M tokens (480p/720p), $16.731 at
+  // 1080p, i.e. $0.0153 per 1k tokens x 21,600 tokens/s = ~$0.33/s at 720p.
+  // `optIn` rows are never picked by cheapest route: they run only when chosen.
+  // Only the H3 text-to-video call has been run live (a 5 s 768P take, 2026-10-16,
+  // no cost field on the response); image bodies follow Comfy's model pages.
+  {
+    id: "comfy:minimax/minimax-h3",
+    driver: "comfy",
+    optIn: true,
+    comfy: { model: "minimax/minimax-h3", endFrame: false, fixed: { resolution: "768P" } },
+    promptStyle: "fal-brief",
+    short: "H3cmf",
+    label: "MiniMax H3 · Comfy (768P)",
+    // Measured 2026-10-16: a 5 s 768P take used 136 credits = $0.6445 at
+    // 211 credits per dollar ($0.1289/s), against the published $0.1287/s.
+    usdPerVideoSecond: 0.1287,
+    confidence: "measured",
+    falUnit: "Comfy: seconds",
+    note: "MiniMax H3 through the Comfy Router: first frame, no end frame. Own synchronised audio.",
+    durations: range(5, 15),
+    minDuration: 5,
+    imageParams: ["first_frame"],
+  },
+  {
+    id: "comfy:byteplus/dreamina-seedance-2-5-260628/image-to-video",
+    driver: "comfy",
+    optIn: true,
+    comfy: { model: "byteplus/dreamina-seedance-2-5-260628", endFrame: true, fixed: { resolution: "720p", ratio: "adaptive", generate_audio: true } },
+    promptStyle: "seedance",
+    short: "SD25cmf",
+    label: "Seedance 2.5 · Comfy (720p)",
+    usdPerVideoSecond: 0.331,
+    confidence: "estimated",
+    falUnit: "Comfy: video tokens",
+    note: "Seedance 2.5 through the Comfy Router: start + end frames. Native audio.",
+    durations: range(4, 30),
+    minDuration: 4,
+    imageParams: ["first_frame", "last_frame"],
+  },
+  {
+    id: "comfy:byteplus/dreamina-seedance-2-5-260628/reference-to-video",
+    driver: "comfy",
+    optIn: true,
+    comfy: { model: "byteplus/dreamina-seedance-2-5-260628", fixed: { resolution: "720p", generate_audio: true } },
+    inputMode: "reference",
+    promptStyle: "seedance",
+    short: "SD25refcmf",
+    label: "Seedance 2.5 — references · Comfy (720p)",
+    refVideo: { param: "reference_video", max: 10, minSec: 2, maxSec: 30, totalSec: 30, usdPerSec: 0.331, confidence: "estimated" },
+    usdPerVideoSecond: 0.36,
+    confidence: "uncalibrated",
+    falUnit: "Comfy: video tokens",
+    note: "Seedance 2.5 reference mode through the Comfy Router (reference images and videos). Not yet run live.",
+    durations: range(4, 30),
+    minDuration: 4,
+  },
   {
     id: "alibaba/wan-3.0/image-to-video",
     short: "Wan30", // model code in take file names
@@ -334,7 +394,7 @@ export const FAMILIES = [
 ];
 export const MODES = { frames: "Frames", refs: "References" };
 export const TIERS = { standard: "Standard", fast: "Fast", mini: "Mini" };
-export const VIAS = { fal: "fal", atlas: "Atlas" };
+export const VIAS = { fal: "fal", atlas: "Atlas", comfy: "Comfy" };
 
 const COORDS = {
   "minimax/h3/image-to-video": { family: "h3", mode: "frames", res: "2K" },
@@ -348,6 +408,9 @@ const COORDS = {
   "alibaba/wan-3.0/image-to-video": { family: "wan3", mode: "frames" },
   "atlas:bytedance/seedance-2.5/image-to-video": { family: "sd25", mode: "frames", res: "720p", via: "atlas" },
   "atlas:bytedance/seedance-2.5/reference-to-video": { family: "sd25", mode: "refs", res: "720p", via: "atlas" },
+  "comfy:minimax/minimax-h3": { family: "h3", mode: "frames", res: "768P", via: "comfy" },
+  "comfy:byteplus/dreamina-seedance-2-5-260628/image-to-video": { family: "sd25", mode: "frames", res: "720p", via: "comfy" },
+  "comfy:byteplus/dreamina-seedance-2-5-260628/reference-to-video": { family: "sd25", mode: "refs", res: "720p", via: "comfy" },
 };
 for (const m of VIDEO_MODELS) Object.assign(m, { tier: null, res: null, via: "fal" }, COORDS[m.id] || {});
 
@@ -377,7 +440,7 @@ function variant(base, res, { usd, confidence, conversion, refVideoUsd, note } =
     conversion: conversion || null,
     note: note || base.note,
   };
-  if (base.driver === "atlas") v.atlas = { ...base.atlas, fixed: { ...(base.atlas.fixed || {}), resolution: res } };
+  if (base.driver === "atlas" || base.driver === "comfy") v[base.driver] = { ...base[base.driver], fixed: { ...(base[base.driver].fixed || {}), resolution: res } };
   else { v.endpoint = base.endpoint || base.id; v.fixedParams = { ...(base.fixedParams || {}), resolution: res }; }
   if (base.refVideo) v.refVideo = { ...base.refVideo, usdPerSec: refVideoUsd ?? base.refVideo.usdPerSec };
   if (typeof usd === "function") Object.defineProperty(v, "usdPerVideoSecond", { get: usd, enumerable: true });
@@ -447,6 +510,12 @@ for (const id of ["atlas:bytedance/seedance-2.5/image-to-video", "atlas:bytedanc
   VARIANTS.push(variant(row(id), "480p", { usd: 0.15, confidence: "uncalibrated", refVideoUsd: 0.14 }));
   VARIANTS.push(variant(row(id), "1080p", { usd: 0.75, confidence: "uncalibrated", refVideoUsd: 0.70 }));
 }
+// Comfy Router (pricing page 2026-10-16): H3 2K $0.1859/s; Seedance 2.5 at
+// $0.015301 per 1k tokens (480p/720p) and $0.016731 (1080p).
+VARIANTS.push(variant(row("comfy:minimax/minimax-h3"), "2K", { usd: 0.1859, confidence: "estimated" }));
+const SD25_CMF = "comfy:byteplus/dreamina-seedance-2-5-260628";
+VARIANTS.push(variant(row(`${SD25_CMF}/image-to-video`), "480p", { usd: sdUSD(0.015301, "480p"), confidence: "estimated", conversion: { tokensPerVideoSecond: SD_TOKENS["480p"] } }));
+VARIANTS.push(variant(row(`${SD25_CMF}/image-to-video`), "1080p", { usd: sdUSD(0.016731, "1080p"), confidence: "estimated", conversion: { tokensPerVideoSecond: SD_TOKENS["1080p"] } }));
 VIDEO_MODELS.push(...VARIANTS);
 // Hand-written rows get the picker's label too (their old labels live in
 // git history); conversions for the price watch come from the row itself.
@@ -540,6 +609,29 @@ export const IMAGE_MODELS = [
     usdPerImage: 0.04,
     confidence: "uncalibrated",
     note: "Ceiling estimate. The in-session default for turnarounds and boards.",
+  },
+  // Comfy Router stills (Shawn, 2026-10-16). Token-billed by Comfy's Vertex
+  // route: Nano Banana 2 is $0.60 per 1M input tokens and $72 per 1M image output
+  // tokens; Pro is $2.40 and $144. A 1K image is ~1,290 output tokens in Comfy's
+  // own sample (~$0.093), plus a few cents of input when references are sent.
+  // Rows are ceilings until a real take's credits are read from the dashboard.
+  {
+    id: "comfy:vertexai/gemini-3.1-flash-image",
+    label: "Nano Banana 2 · Comfy",
+    driver: "comfy",
+    endpoints: { generate: "vertexai/gemini-3.1-flash-image", edit: "vertexai/gemini-3.1-flash-image" },
+    usdPerImage: 0.10,
+    confidence: "uncalibrated",
+    note: "Nano Banana 2 through the Comfy Router (token-billed, about $0.09 per 1K image). Refused prompts are still billed.",
+  },
+  {
+    id: "comfy:vertexai/gemini-3-pro-image",
+    label: "Nano Banana Pro · Comfy",
+    driver: "comfy",
+    endpoints: { generate: "vertexai/gemini-3-pro-image", edit: "vertexai/gemini-3-pro-image" },
+    usdPerImage: 0.19,
+    confidence: "uncalibrated",
+    note: "Nano Banana Pro through the Comfy Router (token-billed, about $0.16 per 1K/2K image, more at 4K). Refused prompts are still billed.",
   },
   {
     id: "fal-ai/gpt-image-1",
@@ -645,7 +737,8 @@ export function routeSiblings(modelId) {
   const m = videoModel(modelId);
   if (!m || !m.family) return m ? [m] : [];
   const k = routeKey(m);
-  return VIDEO_MODELS.filter((x) => routeKey(x) === k);
+  // optIn rows (Comfy) run only when picked; they never win the cheapest route.
+  return VIDEO_MODELS.filter((x) => routeKey(x) === k && (!x.optIn || x.id === modelId));
 }
 
 // isReady(via) -> bool: whether that service is connected. Returns the chosen
