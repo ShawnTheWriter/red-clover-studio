@@ -54,7 +54,7 @@ assets. Start a new production or episode, or start a *remaster* from a Resolve 
 ![Connect services](docs/tour/01-connections.jpg)
 
 Add keys for the services you want, in one place: fal for video (MiniMax, Seedance, Kling, Wan),
-GPT Image, lip sync and sound effects; Atlas Cloud for Seedance at Atlas's prices; Comfy Router
+GPT Image, lip sync, upscaling and sound effects; Atlas Cloud for Seedance 2.5 and Seedance 2.0 Fast/Mini at Atlas's prices; Comfy Router
 for MiniMax H3, Seedance and Nano Banana through Comfy's API; Google Gemini
 for Nano Banana stills; ElevenLabs for voices; Anthropic or OpenRouter for the Claude helpers.
 Keys stay on your computer and the app only ever shows their last four characters.
@@ -66,7 +66,8 @@ quality), each take goes through the cheaper one at that moment, using live pric
 publishes them, and the quote shows the saving before you pay ("sent via Atlas at $0.330/s instead of
 fal at $0.466/s"). It only compares like for like, never swaps one model for another, only uses services
 you've connected, and records which route each take took. On by default; the CHEAPEST chip turns it off.
-Today that covers Seedance 2.5 on fal and Atlas Cloud; new service adapters join automatically.
+Today that covers Seedance on fal and Atlas Cloud; new service adapters join automatically. The model picker
+opens on the cheapest connected service for the model you chose.
 
 ### 2. Script in, shot list out
 
@@ -106,12 +107,26 @@ see is exactly the prompt that's sent. Each take adds to the running total in th
 **budget cap** for the episode: the app blocks anything that would go over it until you raise the
 cap yourself.
 
+**Draft, then finish.** On Atlas, Seedance 2.5 can make a cheap 480p *draft* (measured: $0.134 per second) so you
+can check that a move works. **Finish at 1080p** then re-renders that same draft at full quality. The finish price
+(about $0.263 per second, from Atlas's page) is an estimate until a real finish has been billed, and faces and small
+detail are re-rendered, so check the result.
+
+**Sound on or off.** On Seedance rows that have it (Atlas, and Comfy), a **Sound On | Off** switch turns the model's
+generated sound off for a silent take, for one shot or for a whole batch. The price is the same either way.
+
+A take that is queued or running is marked red and pulses softly, so a submitted take is easy to see. A refused request
+(a model refusal such as fal's 422) is not charged.
+
 ### 6. Pick the take, mark the part you want
 
 ![Takes and trim](docs/tour/06-trim.jpg)
 
 Compare a shot's takes, select the one you prefer, and mark in and out points so only that part
-goes to the cut and the timeline. Undo (⌘Z) never discards a take you paid for.
+goes to the cut and the timeline. You can also **cut out a stretch from the middle** of a take (a cross-fade, a
+stumble) and keep both sides: each kept piece becomes its own clip, and dialogue, sound effects and exports follow.
+**Upscale** a take to 1080p (SeedVR2 or Bytedance, on fal) from the same panel; only the part you kept is sent and
+paid for. Undo (⌘Z) never discards a take you paid for.
 
 ### 7. Sound: dialogue, effects, room tone
 
@@ -179,8 +194,8 @@ shows their last four characters.
 
 | Service | What it powers | Needed? |
 |---|---|---|
-| [fal](https://fal.ai) | Video (MiniMax H3 / H3 Max, Seedance 2.5 / 2.0, Kling, Wan), GPT Image, lip sync, sound effects | For video, yes |
-| [Atlas Cloud](https://www.atlascloud.ai) | Seedance 2.5 at Atlas's prices | Optional |
+| [fal](https://fal.ai) | Video (MiniMax H3 / H3 Max, Seedance 2.5 / 2.0, Kling, Wan), GPT Image, lip sync, upscaling, sound effects | For video, yes |
+| [Atlas Cloud](https://www.atlascloud.ai) | Seedance 2.5 (including 480p drafts and 1080p finish) and Seedance 2.0 Fast/Mini at Atlas's prices | Optional |
 | [Comfy Router](https://comfy.org/platform/router/) | MiniMax H3, Seedance 2.5 and Nano Banana stills through Comfy's partner-model API (see below) | Optional |
 | [Google Gemini](https://aistudio.google.com/apikey) | Storyboard and vault images (Nano Banana) | Recommended |
 | [ElevenLabs](https://elevenlabs.io) | Character voices | Optional |
@@ -246,7 +261,9 @@ Library → + Remaster from a Resolve cut.
 
 - Tested on macOS with Chrome. Windows and Linux: untested. **Windows testers wanted**: if you can try
   it, please open an issue with what happened.
-- Some prices are estimates until a real bill comes back; those are marked "~" in the app.
+- Some prices are estimates until a real bill comes back; those are marked "~" in the app. The Atlas 1080p
+  finish and the Atlas Seedance 2.0 rows are in that group.
+- Whether Atlas's content filter accepts realistic faces on Seedance 2.0 is untested; it accepts them on 2.5.
 - Modules (reusable shot recipes, previz and looks, shareable with other creators) have their
   places in the app but are not built yet.
 
