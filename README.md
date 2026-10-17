@@ -107,10 +107,11 @@ see is exactly the prompt that's sent. Each take adds to the running total in th
 **budget cap** for the episode: the app blocks anything that would go over it until you raise the
 cap yourself.
 
-**Draft, then finish.** On Atlas, Seedance 2.5 can make a cheap 480p *draft* (measured: $0.134 per second) so you
-can check that a move works. **Finish at 1080p** then re-renders that same draft at full quality. The finish price
-(about $0.263 per second, from Atlas's page) is an estimate until a real finish has been billed, and faces and small
-detail are re-rendered, so check the result.
+**Draft, then finish.** On Atlas, Seedance 2.5 can make a 480p *draft* (measured: $0.134 per second) so you
+can check that a move works. **Finish at 1080p** then re-renders that same draft at full quality. That finish is
+expensive: Atlas quoted $6.53 for an 11 s draft (about $0.59 per second, an estimate until one is billed), several
+times the draft. Upscaling the draft instead costs about $0.05 per second, so compare before you finish. Faces and
+small detail are re-rendered by a finish, so check the result.
 
 **Sound on or off.** On Seedance rows that have it (Atlas, and Comfy), a **Sound On | Off** switch turns the model's
 generated sound off for a silent take, for one shot or for a whole batch. The price is the same either way.

@@ -68,7 +68,7 @@ console.log("model rows");
   check("every Atlas Seedance row has the sound switch; no fal row does", rates.VIDEO_MODELS.filter((m) => m.driver === "atlas").every((m) => m.audioSwitch) && rates.VIDEO_MODELS.filter((m) => !m.driver).every((m) => !m.audioSwitch));
   check("the 720p Atlas rows are not drafts", !rates.videoModel(I2V).draft && !rates.videoModel("atlas:bytedance/seedance-2.5/reference-to-video").draft);
   const f = rates.estimateFinishUSD(FIN, 12);
-  check("finish: 12 s x $0.263 = $3.156 (an estimate from Atlas's page)", Math.abs(f.usd - 3.156) < 1e-9 && f.confidence === "estimated");
+  check("finish: 12 s x $0.594 = $7.128 (Atlas playground quote: $6.53 for 11 s)", Math.abs(f.usd - 7.128) < 1e-9 && f.confidence === "estimated");
   check("file name code for a finish take", rates.modelShort(FIN) === "SD25fin");
 }
 
@@ -116,10 +116,10 @@ console.log("\nQUOTE — finish");
 {
   const ep = await store.loadEpisode(DIR);
   const q = jobs.quoteFinish(ep, { versionId: draft.id });
-  check("6 s finish quotes $1.58 (6 x $0.263)", q.totalUSD === 1.58 && q.seconds === 6, JSON.stringify([q.totalUSD, q.seconds]));
-  check("it shows the draft's cost and both together ($0.80 + $1.58)", q.draftUSD === 0.8 && q.bothUSD === 2.38, JSON.stringify([q.draftUSD, q.bothUSD]));
+  check("6 s finish quotes $3.56 (6 x $0.594)", q.totalUSD === 3.56 && q.seconds === 6, JSON.stringify([q.totalUSD, q.seconds]));
+  check("it shows the draft's cost and both together ($0.80 + $3.56)", q.draftUSD === 0.8 && q.bothUSD === 4.36, JSON.stringify([q.draftUSD, q.bothUSD]));
   check("and the days left (7)", q.daysLeft === 7 && !!q.expiresAt, JSON.stringify([q.daysLeft, q.expiresAt]));
-  check("an estimate, under the $2 confirmation threshold", q.confidence === "estimated" && q.needsConfirmation === false);
+  check("an estimate, over the $2 confirmation threshold, so the app asks first", q.confidence === "estimated" && q.needsConfirmation === true);
 }
 
 console.log("\nREFUSALS");
@@ -139,7 +139,7 @@ console.log("\nSPEND GUARDS");
   await store.withEpisode(DIR, (e) => { e.ledger.budgetCapUSD = 10; e.ledger.confirmAboveUSD = 1; });
   await rejects("over the confirm threshold with no confirmation is refused", async () => jobs.submitFinish(DIR, { versionId: draft.id, driver: "atlas" }), /Confirmation required/);
   check("none of those refusals queued anything", (await store.loadEpisode(DIR)).shots[0].versions.filter((v) => v.op === "finish").length === 0);
-  await store.withEpisode(DIR, (e) => { e.ledger.confirmAboveUSD = 2; });
+  await store.withEpisode(DIR, (e) => { e.ledger.confirmAboveUSD = 5; });
 }
 
 console.log("\nTHE FINISH — a take made from the draft");
@@ -154,7 +154,7 @@ console.log("\nTHE FINISH — a take made from the draft");
   check("the request carries ONLY the draft-complete model and the draft id", b.model === "bytedance/seedance-2.5/draft-complete" && b.draft_id === "pred_1" && Object.keys(b).length === 2, JSON.stringify(b));
   check("it lands done with a file named with the finish code", done && done.state === "done" && /_SD25fin_/.test(done.path), JSON.stringify(done && [done.state, done.error, done.path]));
   const e2 = await store.loadEpisode(DIR);
-  check("charged $1.58 once, on the atlas driver", Math.abs(e2.ledger.spentUSD - before - 1.58) < 0.005 && e2.ledger.entries[e2.ledger.entries.length - 1].model === FIN, String(e2.ledger.spentUSD - before));
+  check("charged $3.56 once, on the atlas driver", Math.abs(e2.ledger.spentUSD - before - 3.56) < 0.005 && e2.ledger.entries[e2.ledger.entries.length - 1].model === FIN, String(e2.ledger.spentUSD - before));
   check("the draft is untouched and still finishable", e2.shots[0].versions.find((v) => v.id === draft.id).state === "done");
   check("the finish is NOT auto-selected", e2.shots[0].selectedVersions.length === 0);
   const again = await jobs.submitFinish(DIR, { versionId: draft.id, driver: "atlas" });

@@ -571,7 +571,7 @@ for (const id of ["atlas:bytedance/seedance-2.5/image-to-video", "atlas:bytedanc
   draft.finishModel = "atlas:bytedance/seedance-2.5/draft-complete";
   draft.res = "480p draft";
   draft.atlas = { ...draft.atlas, fixed: { ...draft.atlas.fixed, resolution: "480p", draft: true } };
-  draft.note = "Cheap 480p look (Atlas: about $0.134/s). Finish it at 1080p within 7 days for $0.263/s more: the final keeps the draft's prompt, images, seed and sound.";
+  draft.note = "Cheap 480p look (Atlas: about $0.134/s). Finish it at 1080p within 7 days for about $0.59/s more (4x the draft; an upscale of the draft costs about $0.05/s): the final keeps the draft's prompt, images, seed and sound.";
   draft.label = pickerLabel(draft);
   VARIANTS.push(draft);
   VARIANTS.push(variant(row(id), "1080p", { usd: 0.75, confidence: "uncalibrated", refVideoUsd: 0.70 }));
@@ -606,8 +606,8 @@ export const FINISH_MODELS = [
     label: "Finish at 1080p (Atlas)",
     driver: "atlas",
     target: "1080p",
-    usdPerVideoSecond: 0.263,
-    confidence: "estimated", // Atlas's page; replace with a measured figure after the first real finish
+    usdPerVideoSecond: 0.594,
+    confidence: "estimated", // Atlas playground quote 2026-10-17: $6.53 for an 11 s draft, after the 20% discount (list $8.16). Atlas's model page said $0.263/s and was wrong. Replace with a billed figure after a real finish.
     expiresDays: 7,
     note: "Re-renders the draft at 1080p from the draft's own prompt, images and seed. The composition should hold; faces and small detail are rendered again, so check them.",
   },
