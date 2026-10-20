@@ -1762,6 +1762,13 @@ function videoModelPicker(models, curId, onPick) {
   return box;
 }
 
+// The length a shot's Generate pane opens on: the remaster target from the
+// cut, else the length last picked for the shot, else its storyboard timing.
+function shotStartSeconds(shot) {
+  const beatSec = (shot.beats || []).reduce((t, b) => t + (Number(b.durationSec) || 0), 0);
+  return (shot.remaster && shot.remaster.targetSeconds) || Number(shot.videoSeconds) || (beatSec > 0 ? beatSec : null);
+}
+
 function videoGeneratePane(shot) {
   const box = el("div", "card"); box.style.cssText = "margin-top:10px;background:var(--panel2)";
   box.append(Object.assign(el("h3"), { textContent: "Generate video", style: "font-size:12px;margin-bottom:6px" }));
@@ -1828,10 +1835,16 @@ function videoGeneratePane(shot) {
     // A remaster shot starts at the sellable length NEAREST its target from
     // the cut (cut span + handles) — not rounded up: models stretch the
     // action to fill the length (Shawn, 2026-10-09).
+    // Otherwise: the length last picked for this shot (saved on the shot, so a
+    // reload or restart keeps it), else the shot's storyboard timing. Starting
+    // on the model's shortest length sent an 11 s shot as 4 s (1y, 2026-10-20).
+    // `target` stays remaster-only: the "Target from the cut" note below reads
+    // shot.remaster. `startSec` is what a fresh pane opens on.
     const target = shot.remaster && shot.remaster.targetSeconds;
+    const startSec = shotStartSeconds(shot);
     const fitTarget = (m) => {
       const ds = [...(m.durations || [5])].sort((a, b) => a - b);
-      return target ? nearestSellable(ds, target) : ds[0];
+      return startSec ? nearestSellable(ds, startSec) : ds[0];
     };
     let sel = VIDEO_GEN_SEL.get(shot.id);
     if (!sel || !videoModels.find((m) => m.id === sel.modelId)) {
@@ -1849,7 +1862,7 @@ function videoGeneratePane(shot) {
     const pickModel = (id) => {
       sel.modelId = id;
       const m2 = videoModels.find((x) => x.id === sel.modelId);
-      if (m2 && target) sel.seconds = fitTarget(m2);
+      if (m2 && startSec) sel.seconds = fitTarget(m2);
       else if (m2 && m2.durations && !m2.durations.includes(sel.seconds)) sel.seconds = m2.durations[0];
       // Remember the pick on the shot; picking the episode default clears it,
       // so a later change of default still reaches this shot.
@@ -1869,7 +1882,12 @@ function videoGeneratePane(shot) {
       if (sel.seconds === n) o.selected = true;
       secSel.append(o);
     });
-    secSel.onchange = () => { sel.seconds = Number(secSel.value); draw(); };
+    secSel.onchange = () => {
+      sel.seconds = Number(secSel.value);
+      shot.videoSeconds = sel.seconds;
+      draw();
+      post("/api/episode/shot/update", { dir: EP.dir, shotId: shot.id, patch: { videoSeconds: sel.seconds } }).catch(fail);
+    };
     ctlRow.append(labeled("Duration", secSel));
     modelBody.append(ctlRow);
     // Models with a sound switch (Atlas Seedance): same price either way. Off
@@ -5767,7 +5785,7 @@ function flowSummary(shot, p) {
   const m = models.find((x) => x.id === mid);
   const mn = el("div", "model");
   if (m) {
-    const secs = (sel && sel.seconds) || (m.durations || [5])[0];
+    const secs = (sel && sel.seconds) || nearestSellable(m.durations || [5], shotStartSeconds(shot));
     mn.append(el("b", null, m.label.toUpperCase()));
     const kv = (k, v) => { const r = el("div", "kv"); r.append(el("span", null, k), el("i", null, v)); return r; };
     mn.append(kv("LEN", `${secs}S`), kv("RATE", `$${m.usdPerVideoSecond.toFixed(3)}/S`), kv("EST", `$${(secs * m.usdPerVideoSecond).toFixed(2)}`));

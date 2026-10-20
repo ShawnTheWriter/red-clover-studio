@@ -124,6 +124,8 @@ export function newShot(partial = {}) {
     // The video model last picked for this shot in its Generate pane ("" =
     // use the episode default). A choice, not a take: nothing is generated.
     videoModelId: partial.videoModelId || "",
+    // Length last picked in Generate (s); null = follow the storyboard timing.
+    videoSeconds: partial.videoSeconds || null,
     // The usable part of a take, set on the take itself ("only 0:03–0:07 is
     // good"): { [versionId]: { inSec, outSec } }, either may be null (= start
     // / end of the file). The timeline and every export trim to it.

@@ -566,7 +566,10 @@ for (const [tier, t] of Object.entries(SD20)) for (const mode of ["frames", "ref
 // 1080p stays a ceiling.
 export const ATLAS_DRAFT_USD = 0.134;
 for (const id of ["atlas:bytedance/seedance-2.5/image-to-video", "atlas:bytedance/seedance-2.5/reference-to-video"]) {
-  const draft = variant(row(id), "480p", { usd: ATLAS_DRAFT_USD, confidence: "measured", refVideoUsd: 0.14 });
+  // Reference video on the draft: MEASURED 2026-10-20, shot 1y (11 s out + an 11.04 s
+  // 540x960 previz in): Atlas charged $1.762 = 11 x $0.134 + ~$0.288 -> ~$0.026 per
+  // second of reference video (was a $0.14 guess, 5x too high). One data point.
+  const draft = variant(row(id), "480p", { usd: ATLAS_DRAFT_USD, confidence: "measured", refVideoUsd: 0.026 });
   draft.draft = true;
   draft.finishModel = "atlas:bytedance/seedance-2.5/draft-complete";
   draft.res = "480p draft";
