@@ -2566,7 +2566,7 @@ function imageThumb(path, onClick, size) {
 
   let hoverPreview = null;
   wrap.onmouseenter = () => {
-    if (hoverPreview) return;
+    if (hoverPreview && hoverPreview.isConnected) return;
     hoverPreview = document.createElement("img");
     hoverPreview.src = mediaURL(path, 640);
     // Centered vertically on the thumbnail (not top-aligned) so it doesn't
@@ -2578,7 +2578,7 @@ function imageThumb(path, onClick, size) {
   };
   wrap.onmouseleave = () => {
     if (!hoverPreview) return;
-    hoverPreview.remove();
+    hoverPreview.remove(); OPEN_POPS.delete(hoverPreview);
     hoverPreview = null;
   };
 
@@ -4574,7 +4574,7 @@ function versionThumb(v, onClick) {
 
   let pop = null;
   wrap.onmouseenter = () => {
-    if (pop) return;
+    if (pop && pop.isConnected) return;
     pop = el("video");
     Object.assign(pop, { src: mediaURL(v.path), muted: true, loop: true, autoplay: true, playsInline: true });
     pop.style.cssText = "width:300px;height:auto;max-height:min(540px,90vh);object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#000;box-shadow:0 8px 24px rgba(0,0,0,.6);pointer-events:none";
@@ -4584,7 +4584,7 @@ function versionThumb(v, onClick) {
   };
   wrap.onmouseleave = () => {
     if (!pop) return;
-    pop.pause(); pop.remove(); pop = null;
+    pop.pause(); pop.remove(); OPEN_POPS.delete(pop); pop = null;
   };
 
   wrap.title = "Hover to preview, click to open the full player below";
@@ -4598,7 +4598,21 @@ function versionThumb(v, onClick) {
 // it. Now it lives on the page itself (position:fixed, above everything) and is
 // placed from the thumbnail's position in the WINDOW: to the right when there
 // is room, else the left, and clamped so it never runs off the top or bottom.
+// Every open preview and the thumbnail it belongs to. A preview lives on the page, not in
+// its thumbnail, so when a re-render removes the thumbnail (ticking a reference, say) the
+// mouse never "leaves" it and the preview would stay forever. Any mouse move sweeps away
+// previews whose thumbnail is gone or no longer under the pointer.
+const OPEN_POPS = new Map();
+function sweepPops(keep) {
+  for (const [pop, anchor] of [...OPEN_POPS]) {
+    if (pop === keep) continue;
+    if (!anchor.isConnected || !anchor.matches(":hover")) { if (pop.pause) pop.pause(); pop.remove(); OPEN_POPS.delete(pop); }
+  }
+}
+document.addEventListener("mousemove", () => sweepPops(), { passive: true });
 function placePop(anchor, pop, width) {
+  OPEN_POPS.set(pop, anchor);
+  sweepPops(pop); // a new preview replaces any orphan left by a re-render
   if (!pop.isConnected) document.body.append(pop);
   const r = anchor.getBoundingClientRect();
   const w = width || pop.getBoundingClientRect().width || 300;

@@ -555,7 +555,10 @@ body.rc-lib main{grid-template-rows:56px minmax(0,1fr)}
 .rc-fold[open]>summary .x::after{content:"CLOSE"}
 .rc-fold>summary:hover .x{color:var(--ink);border-color:var(--acc)}
 .rc-fold>.rc-foldb{padding:4px 10px 10px}
-.rc-secbar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;gap:4px;padding:6px 0;margin:8px 0 0;background:var(--bg);border-bottom:1px solid var(--line)}
+/* Opaque all the way to the pane edges and top: the space above and beside the bar is its own padding, not margin, or scrolled content shows through it. */
+.rc-secbar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;gap:4px;padding:14px 0 6px;margin:0;background:var(--bg);border-bottom:1px solid var(--line)}
+/* The inspector pane pads 16px on top and 18px at the sides. A sticky bar stops at the padding edge (top:0 left a 16px strip where scrolled content showed above it), so it sticks 16px higher and brings its own padding to match; side margins cover the gutters. */
+.rc-insp .rc-secbar{top:-16px;padding:30px 18px 6px;margin:0 -18px}
 .rc-secbar .rc-closeall{margin-left:auto}
 .rc-closesec{display:block;width:100%;margin-top:10px;padding:6px;font-family:var(--mono);font-size:10px;letter-spacing:.6px;color:var(--dim);background:none;border:1px solid var(--line);border-radius:4px;cursor:pointer}
 .rc-closesec:hover{color:var(--ink);border-color:var(--acc)}
