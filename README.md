@@ -116,6 +116,8 @@ small detail are re-rendered by a finish, so check the result.
 **Sound on or off.** On Seedance rows that have it (Atlas, and Comfy), a **Sound On | Off** switch turns the model's
 generated sound off for a silent take, for one shot or for a whole batch. The price is the same either way.
 
+**Pick the costume or angle.** In a shot's references, every vault card is listed under Characters, Locations or Props (alphabetical, with a search box). A card with more than one image has a **Choose images** list, so a night-clothes shot can send the night-clothes image instead of the main one, without uploading it again as a separate asset.
+
 **Cancel.** A queued or running take has a **Cancel** button. A take still waiting in the app's own queue is dropped for free; one already sent is cancelled at the service when the service still allows it (fal while it is waiting in its queue, Sume before it starts), and then it is not charged. If the service already started it, the take keeps running and the app says why. Generate also asks before queueing a second take on the same model for the same shot.
 
 A take that is queued or running is marked red and pulses softly, so a submitted take is easy to see. A refused request

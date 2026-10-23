@@ -2995,7 +2995,7 @@ function generatePane(shot, beat) {
     const chipRow = el("div", "row"); chipRow.style.cssText = "flex-wrap:wrap;margin:4px 0 8px;gap:4px";
     const refAssetsNow = (shot.refs || []).map((id) => (EP.assets || []).find((a) => a.id === id)).filter(Boolean);
     if (!refAssetsNow.length) chipRow.append(Object.assign(el("span", "mini"), { textContent: "none yet" }));
-    refAssetsNow.forEach((a) => chipRow.append(Object.assign(el("span", "pill" + (a.path ? "" : " warn")), { textContent: `${a.name}${a.path ? "" : " (no file — won't be sent as an image)"}` })));
+    refAssetsNow.forEach((a) => chipRow.append(Object.assign(el("span", "pill" + (a.path ? "" : " warn")), { textContent: `${a.name}${a.angle ? " · " + a.angle : ""}${a.path ? "" : " (no file — won't be sent as an image)"}` })));
     box.append(chipRow);
 
     const manageBtn = el("button", null, manageOpen ? "Hide references" : "Manage references");
@@ -3114,11 +3114,10 @@ function shotRefsSection(shot, where) {
   const wrap = el("div"); wrap.style.cssText = "margin:8px 0";
   const row = el("div", "row"); row.style.cssText = "flex-wrap:wrap;gap:4px;align-items:center";
   row.append(Object.assign(el("span", "mini"), { textContent: "References (whole shot):" }));
-  const seen = new Set();
   const cur = (shot.refs || []).map((id) => (EP.assets || []).find((a) => a.id === id)).filter(Boolean)
-    .filter((a) => { const k = `${a.type}:${a.name.trim().toLowerCase()}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    .sort((a, b) => (REF_TYPE_ORDER.indexOf(a.type) - REF_TYPE_ORDER.indexOf(b.type)) || a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   if (!cur.length) row.append(Object.assign(el("span", "pill warn"), { textContent: "none" }));
-  cur.forEach((a) => row.append(Object.assign(el("span", "pill"), { textContent: `${a.name}` })));
+  cur.forEach((a) => row.append(Object.assign(el("span", "pill"), { textContent: `${a.name}${a.angle ? " · " + a.angle : ""}` })));
   const btn = el("button", null, OPEN_REF_MANAGERS.has(key) ? "Hide references" : "Manage references");
   btn.style.cssText = "font-size:11px;padding:2px 8px";
   btn.onclick = () => { if (OPEN_REF_MANAGERS.has(key)) OPEN_REF_MANAGERS.delete(key); else OPEN_REF_MANAGERS.add(key); withShotAnchor(shot.id, renderEpisode); };
@@ -3136,31 +3135,55 @@ function shotRefsSection(shot, where) {
   return wrap;
 }
 
-// Toggle chips for shot.refs, grouped the same way the Identity Vault groups
-// multi-angle assets (one chip per character/location/prop, not per angle).
+// A shot's references, laid out like the Identity Vault: grouped by type (characters,
+// locations, props), alphabetical inside each, with a search box. A card with more than
+// one image (a costume, an angle, close-ups) has a "Choose images" list: tick exactly the
+// images this shot should send, so a night-clothes shot can send the night clothes
+// without a duplicate upload. shot.refs holds the id of each image used.
+const REF_TYPE_ORDER = ["character", "location", "prop"];
+const REF_TYPE_TITLE = { character: "Characters", location: "Locations", prop: "Props" };
+const OPEN_REF_CARDS = new Set(); // `${shotId}|${cardKey}` whose image list is open
+let REF_FILTER = "";
 function shotRefsPicker(shot, onChange) {
   const box = el("div", "card"); box.style.cssText = "background:var(--panel2);margin-top:4px;padding:8px";
   const groups = groupAssets(EP.assets || []);
   if (!groups.length) {
     box.append(Object.assign(el("div", "mini"), { textContent: "No assets in the Identity Vault yet." }));
   } else {
-    // A shot may point at any angle of a card (e.g. after an empty slot was
-    // removed), so a chip is "on" when ANY of the card's ids is attached and
-    // turning it off removes all of them.
-    groups.forEach((group) => {
-      const rep = group.find((a) => a.path) || group[0];
-      const ids = group.map((a) => a.id);
-      const on = (shot.refs || []).some((id) => ids.includes(id));
-      const chip = el("button", "pill" + (on ? " on" : ""));
-      chip.textContent = `${on ? "✓ " : ""}${rep.type}: ${rep.name}${group.some((a) => a.path) ? "" : " (no file)"}`;
-      chip.style.cssText = "cursor:pointer;margin:2px";
-      chip.onclick = () => {
-        const has = (shot.refs || []).some((id) => ids.includes(id));
-        const refs = has ? (shot.refs || []).filter((id) => !ids.includes(id)) : [...(shot.refs || []), rep.id];
-        onChange(refs);
-      };
-      box.append(chip);
+    const search = document.createElement("input");
+    search.type = "search"; search.placeholder = "Find a character, location or prop…"; search.value = REF_FILTER;
+    search.style.cssText = "width:100%;margin:0 0 8px;box-sizing:border-box";
+    box.append(search);
+    const cards = [];
+    const sections = [];
+    const byType = new Map();
+    groups.forEach((g) => { const t = g[0].type; if (!byType.has(t)) byType.set(t, []); byType.get(t).push(g); });
+    const types = [...REF_TYPE_ORDER.filter((t) => byType.has(t)), ...[...byType.keys()].filter((t) => !REF_TYPE_ORDER.includes(t)).sort()];
+    types.forEach((t) => {
+      const list = byType.get(t).sort((a, b) => a[0].name.localeCompare(b[0].name, undefined, { sensitivity: "base" }));
+      const section = el("div"); section.style.margin = "6px 0";
+      const head = Object.assign(el("div", "mini"), { textContent: `${(REF_TYPE_TITLE[t] || `${t[0].toUpperCase()}${t.slice(1)}s`).toUpperCase()} · ${list.length}` });
+      head.style.cssText = "letter-spacing:.08em;margin:8px 0 4px;color:var(--muted, #8a93a6)";
+      section.append(head);
+      list.forEach((group) => {
+        const card = refCard(shot, group, onChange);
+        cards.push({ el: card, name: group[0].name.toLowerCase(), section });
+        section.append(card);
+      });
+      sections.push(section);
+      box.append(section);
     });
+    const none = Object.assign(el("div", "mini"), { textContent: "Nothing in the vault matches that." }); none.style.display = "none";
+    box.append(none);
+    const applyFilter = () => {
+      const q = search.value.trim().toLowerCase(); REF_FILTER = search.value;
+      let shown = 0;
+      cards.forEach((c) => { const hit = !q || c.name.includes(q); c.el.style.display = hit ? "" : "none"; if (hit) shown++; });
+      sections.forEach((sec) => { sec.style.display = cards.some((c) => c.section === sec && c.el.style.display !== "none") ? "" : "none"; });
+      none.style.display = shown ? "none" : "";
+    };
+    search.oninput = applyFilter;
+    applyFilter();
   }
 
   // Automation misses references sometimes (a location it should have
@@ -3177,6 +3200,56 @@ function shotRefsPicker(shot, onChange) {
   addRow.append(addBtn); addRow.append(addHost);
   box.append(addRow);
   return box;
+}
+
+// One vault card in a shot's reference list: a toggle for the card, and for a card with
+// several images a list to pick exactly which ones this shot sends.
+function refCard(shot, group, onChange) {
+  const main = group.find((a) => a.path) || group[0];
+  const ids = group.map((a) => a.id);
+  const refs = shot.refs || [];
+  const picked = group.filter((a) => refs.includes(a.id));
+  const on = picked.length > 0;
+  const key = `${shot.id}|${main.type}:${main.name.trim().toLowerCase()}`;
+  const withFiles = group.filter((a) => a.path);
+  const wrap = el("div"); wrap.style.cssText = "margin:2px 0;padding:3px 6px;border-radius:8px;" + (on ? "background:rgba(210,60,70,.10);border:1px solid rgba(210,60,70,.35)" : "border:1px solid transparent");
+  const row = el("div", "row"); row.style.cssText = "align-items:center;gap:8px;flex-wrap:nowrap";
+  if (main.path) { const t = imageThumb(main.path, () => {}, { width: "34px", height: "34px" }); t.style.flexShrink = "0"; row.append(t); }
+  const chip = el("button", "pill" + (on ? " on" : ""));
+  chip.textContent = `${on ? "✓ " : ""}${main.name}${group.some((a) => a.path) ? "" : " (no file)"}`;
+  chip.style.cssText = "cursor:pointer;margin:0";
+  chip.title = on ? "Take this off the shot (every image of it)" : "Attach this to the shot (its main image; open the list to choose another)";
+  chip.onclick = () => onChange(on ? refs.filter((id) => !ids.includes(id)) : [...refs, main.id]);
+  row.append(chip);
+  const sum = el("span", "mini"); sum.style.flex = "1";
+  if (withFiles.length > 1) sum.textContent = on ? `${picked.length} of ${withFiles.length} images sent` : `${withFiles.length} images`;
+  row.append(sum);
+  if (withFiles.length > 1) {
+    const open = OPEN_REF_CARDS.has(key);
+    const tog = el("button", null, open ? "▴ Hide images" : "▾ Choose images");
+    tog.style.cssText = "font-size:11px;padding:2px 8px";
+    tog.title = "Pick exactly which images of this card the shot sends: a costume, an angle, close-ups";
+    tog.onclick = () => { if (open) OPEN_REF_CARDS.delete(key); else OPEN_REF_CARDS.add(key); withShotAnchor(shot.id, renderEpisode); };
+    row.append(tog);
+  }
+  wrap.append(row);
+  if (withFiles.length > 1 && OPEN_REF_CARDS.has(key)) {
+    const list = el("div"); list.style.cssText = "display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 2px 42px";
+    withFiles.forEach((a) => {
+      const sel = refs.includes(a.id);
+      const cell = el("label"); cell.style.cssText = "display:flex;flex-direction:column;gap:3px;width:104px;cursor:pointer;font-size:11px";
+      const t = imageThumb(a.path, () => {}, { width: "104px", height: "78px" });
+      const line = el("div"); line.style.cssText = "display:flex;gap:5px;align-items:flex-start";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = sel; cb.style.marginTop = "2px";
+      cb.onchange = () => onChange(cb.checked ? [...refs, a.id] : refs.filter((id) => id !== a.id));
+      line.append(cb, Object.assign(el("span"), { textContent: a.angle || (a.id === main.id ? "Main image" : "Image"), style: "word-break:break-word" }));
+      cell.append(t, line);
+      list.append(cell);
+    });
+    wrap.append(list);
+    wrap.append(Object.assign(el("div", "mini"), { textContent: "Tick only the images this shot should send. Unticking all of them takes the card off the shot.", style: "margin:4px 0 2px 42px" }));
+  }
+  return wrap;
 }
 
 // Pick an image via the wide picker, name it, and it becomes a real Identity

@@ -25,6 +25,13 @@ export function refNames(shot, ep) {
     .filter(Boolean);
 }
 
+// A vault CARD is every image with the same type and name: the main image plus its
+// other costumes, angles and close-ups. A shot's refs hold the id of each image it
+// uses, so it can point at a costume instead of the main image.
+export const cardKey = (a) => `${a.type}:${String(a.name || "").trim().toLowerCase()}`;
+// The card's default image: the first one that has a file.
+export const cardMain = (records) => records.find((a) => a.path) || records[0];
+
 export function refAssets(shot, ep) {
   return (ep.assets || []).filter((a) => (shot.refs || []).includes(a.id));
 }
@@ -217,7 +224,7 @@ export function draftTimecodeText(shot, ep) {
   });
   const assets = refAssets(shot, ep);
   const assetMap = assets.length
-    ? assets.map((a, i) => `@Image${i + 1} = ${a.name} (${a.type})`).join("\n")
+    ? assets.map((a, i) => `@Image${i + 1} = ${a.name}${a.angle ? ` — ${a.angle}` : ""} (${a.type})`).join("\n")
     : "(no reference assets attached to this shot — add some to anchor identity)";
   const style = p.style || "cinematic, natural color grade";
   return `【Style】${style}
@@ -396,7 +403,7 @@ export function resolveReferenceSet(shot, ep, { max = MAX_REFERENCE_IMAGES } = {
   }));
   refAssets(shot, ep).forEach((a) => add({
     kind: "asset", path: a.path, assetId: a.id, type: a.type,
-    label: `${a.name} (${a.type})`, identityHold: usableHold(a.identityHold),
+    label: `${a.name}${a.angle ? ` — ${a.angle}` : ""} (${a.type})`, identityHold: usableHold(a.identityHold),
   }));
   const kept = out.slice(0, max).map((x, i) => ({ ...x, ref: `@Image${i + 1}` }));
   return { images: kept, dropped: out.length - kept.length };
@@ -438,10 +445,20 @@ export function resolveFramesRefSet(shot, ep, max = 9) {
   const seen = new Set();
   const out = [];
   const add = (a) => { if (a.path && !seen.has(a.path)) { seen.add(a.path); out.push(a); } };
+  // A character whose card is attached by its main image alone sends every angle of it
+  // (turnaround and face close-ups). A shot that points at any OTHER image of the card
+  // (a costume, say) sends exactly the images it picked.
   const chars = direct.filter((a) => a.type === "character");
+  const done = new Set();
   for (const c of chars) {
-    add(c);
-    assets.filter((a) => a.type === "character" && a.name === c.name && a.id !== c.id).forEach(add);
+    const key = cardKey(c);
+    if (done.has(key)) continue;
+    done.add(key);
+    const card = assets.filter((a) => cardKey(a) === key);
+    const picked = chars.filter((a) => cardKey(a) === key);
+    const main = cardMain(card);
+    if (picked.length === 1 && main && picked[0].id === main.id) card.forEach(add);
+    else picked.forEach(add);
   }
   direct.filter((a) => a.type !== "character").forEach(add);
   const kept = out.slice(0, max).map((a, i) => ({
