@@ -47,6 +47,13 @@ export class BaseDriver {
     throw new Error(`${this.name}: generateUpscale not supported`);
   }
 
+  // Ask the provider to drop a job it has not started yet.
+  // { jobId, modelId, statusUrl } -> { cancelled: bool, reason? }. Only a
+  // driver that can really do it overrides this; the default says no.
+  async cancelJob() {
+    return { cancelled: false, reason: `${this.name} has no cancel for a job already sent` };
+  }
+
   // Poll an async job. -> { state: queued|running|done|error, progress?, result?, error? }
   async getJob() {
     throw new Error(`${this.name}: getJob not supported`);

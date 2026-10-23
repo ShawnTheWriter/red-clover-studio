@@ -66,6 +66,12 @@ export class MockDriver extends BaseDriver {
     return { jobId, statusUrl: null, responseUrl: null };
   }
 
+  async cancelJob({ jobId }) {
+    if (!jobs.has(jobId)) return { cancelled: false, reason: "unknown mock job" };
+    jobs.delete(jobId);
+    return { cancelled: true };
+  }
+
   async getJob({ jobId }) {
     const j = jobs.get(jobId);
     if (!j) return { state: "error", error: "unknown mock job" };

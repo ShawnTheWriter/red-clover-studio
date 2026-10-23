@@ -566,3 +566,8 @@ body.rc-lib main{grid-template-rows:56px minmax(0,1fr)}
 @keyframes rcLive{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes rcLiveRow{0%,100%{background:rgba(214,60,80,.10)}50%{background:rgba(214,60,80,.02)}}
 @media (prefers-reduced-motion:reduce){.pill.live,.ver-block.ver-live{animation:none}}
+
+/* Archive (scene "X"): drop targets for shots leaving the edit */
+.rc-arch-zone{margin:14px 4px 8px;padding:14px;border:1px dashed var(--line,#444);border-radius:6px;text-align:center;font-size:12px;opacity:.65}
+.rc-arch-empty{opacity:.6;cursor:default}
+.drop-arch{outline:2px dashed var(--acc)!important;outline-offset:-2px;opacity:1!important}

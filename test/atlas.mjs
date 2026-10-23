@@ -64,7 +64,7 @@ const I2V = "atlas:bytedance/seedance-2.5/image-to-video", REF = "atlas:bytedanc
 
 console.log("model rows");
 check("Atlas rows exist and run on the atlas driver", videoModel(I2V)?.driver === "atlas" && videoModel(REF)?.driver === "atlas");
-check("fal rows have no driver set (stay on fal)", VIDEO_MODELS.filter((m) => !m.id.startsWith("atlas:") && !m.id.startsWith("comfy:")).every((m) => !m.driver));
+check("fal rows have no driver set (stay on fal)", VIDEO_MODELS.filter((m) => !m.id.startsWith("atlas:") && !m.id.startsWith("comfy:") && !m.id.startsWith("sume:")).every((m) => !m.driver));
 check("routing: an Atlas row goes to atlas, a fal row to fal, a rehearsal stays mock", jobs.driverForModel(I2V, "fal") === "atlas" && jobs.driverForModel("minimax/h3/image-to-video", "fal") === "fal" && jobs.driverForModel(I2V, "mock") === "mock");
 
 console.log("\ndriver");
@@ -97,7 +97,7 @@ await d.generateVideo({ imagePath: img, endImagePath: img, aspectRatio: "9:16", 
 const bm = seen.submits[nBefore + 1];
 check("2.0 Mini frames body: image + last_image, adaptive ratio, 720p", bm.model === "bytedance/seedance-2.0-mini/image-to-video" && bm.image && bm.last_image && bm.ratio === "adaptive" && bm.resolution === "720p", JSON.stringify(bm));
 const { cheapestRoute } = await import("../server/rates.js");
-const toAtlas = cheapestRoute("bytedance/seedance-2.0/fast/reference-to-video@480p", () => true);
+const toAtlas = cheapestRoute("bytedance/seedance-2.0/fast/reference-to-video@480p", (v) => v !== "sume");
 check("a Seedance 2.0 Fast pick on fal moves to Atlas when Atlas is connected (fal $0.117/s vs $0.072/s)", toAtlas.routed && toAtlas.modelId === SD20F, JSON.stringify([toAtlas.modelId, toAtlas.options]));
 check("and stays on fal when Atlas is not connected", !cheapestRoute("bytedance/seedance-2.0/fast/reference-to-video@480p", (v) => v === "fal").routed);
 const bal = await d.balance();

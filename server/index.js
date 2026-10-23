@@ -604,11 +604,20 @@ r.post("/api/episode/scenes/reorder", async ({ body }) =>
   edit(body.dir, (ep) => reorderScenes(ep, body.order, organize.CUT_SCENE)));
 
 r.post("/api/episode/shot/move-to-scene", async ({ body }) =>
-  edit(body.dir, (ep) => {
+  edit(body.dir, async (ep) => {
+    const before = ep.shots.find((s) => s.id === body.shotId);
+    const fromCode = before ? `${before.sceneNum}${before.shotCode}` : "";
     const shot = moveShotToScene(ep, body.shotId, body.targetSceneNum, body.position);
-    // Moving a shot out of the "Cut from edit" bin restores it.
-    if (shot.sceneNum !== organize.CUT_SCENE) delete shot.cutFromEdit;
-    return { shotId: shot.id, sceneNum: shot.sceneNum, shotCode: shot.shotCode };
+    // Into the bin by hand ("Archive (not in the edit)"): marked like a shot the
+    // Resolve organize step cut, so the timeline, exports, sound and gates skip
+    // it. Moving a shot out of the bin restores it.
+    if (shot.sceneNum === organize.CUT_SCENE) {
+      if (!shot.cutFromEdit) shot.cutFromEdit = { at: new Date().toISOString(), fromCode, manual: true };
+    } else delete shot.cutFromEdit;
+    // A built timeline follows at once, so the next FCPXML matches the board.
+    const built = ((ep.timeline && ep.timeline.tracks) || []).some((t) => (t.clips || []).length);
+    if (built) await timeline.rebuildFromSelection(ep);
+    return { shotId: shot.id, sceneNum: shot.sceneNum, shotCode: shot.shotCode, rebuilt: built };
   }));
 
 r.post("/api/episode/beat/update", async ({ body }) =>
@@ -1120,6 +1129,15 @@ async function checkAtlasBalance(force = false) {
   catch (e) { ATLAS_BALANCE = { error: e.message, at: Date.now() }; }
   return ATLAS_BALANCE;
 }
+// Sume: same idea; its balance route is free and says if the key works.
+let SUME_BALANCE = null;
+async function checkSumeBalance(force = false) {
+  if (!process.env.SUME_API_KEY) { SUME_BALANCE = null; return null; }
+  if (!force && SUME_BALANCE && Date.now() - SUME_BALANCE.at < 10 * 60 * 1000) return SUME_BALANCE;
+  try { const b = await jobs.drivers.sume.balance(); SUME_BALANCE = { usd: b.usd, invoiced: b.invoiced, keyOnly: !!b.keyOnly, at: Date.now() }; }
+  catch (e) { SUME_BALANCE = { error: e.message, at: Date.now() }; }
+  return SUME_BALANCE;
+}
 function providerStatus(p) {
   const key = process.env[p.env];
   let ready = false, note = "";
@@ -1132,6 +1150,12 @@ function providerStatus(p) {
     note = !b ? "Connected · balance not checked yet" : b.error ? (/40[13]/.test(b.error) ? "Atlas rejected this key — check it and connect again" : `Connected · balance check failed (${b.error})`)
       : b.usd == null ? "Connected" : b.usd <= 0 ? "Connected · balance $0 — add credit at atlascloud.ai before generating" : `Connected · balance $${b.usd.toFixed(2)}`;
   }
+  else if (p.id === "sume") {
+    const b = SUME_BALANCE;
+    ready = !(b && b.error && /40[13]/.test(b.error));
+    note = !b ? "Connected · balance not checked yet" : b.error ? (/40[13]/.test(b.error) ? "Sume rejected this key — check it and connect again" : `Connected · balance check failed (${b.error})`)
+      : b.keyOnly ? "Connected · key works (this key type can't show the balance — check it at sume.com)" : b.invoiced ? "Connected · invoiced account" : b.usd == null ? "Connected" : b.usd <= 0 ? "Connected · balance $0 — add credit at sume.com before generating" : `Connected · balance $${b.usd.toFixed(2)}`;
+  }
   else if (p.id === "comfy") { const st = jobs.drivers.comfy.status(); ready = st.ready; note = st.ready ? "Connected · costs show as estimates (Comfy sends no per-take charge)" : st.reason || ""; }
   else if (p.id === "elevenlabs") { const st = voice.voiceDrivers.elevenlabs.status(); ready = st.ready; note = st.ready ? "Connected" : st.reason || ""; }
   // fal's pricing check doubles as a key check: a 401 means fal refused the key.
@@ -1143,12 +1167,13 @@ function providerStatus(p) {
 // Point the running drivers at a new (or no) key.
 function applyKey(p, value) {
   if (value) process.env[p.env] = value; else delete process.env[p.env];
-  if (p.id === "fal" || p.id === "gemini" || p.id === "atlas" || p.id === "comfy") jobs.drivers[p.id].key = value || "";
+  if (p.id === "fal" || p.id === "gemini" || p.id === "atlas" || p.id === "sume" || p.id === "comfy") jobs.drivers[p.id].key = value || "";
   if (p.id === "elevenlabs") voice.voiceDrivers.elevenlabs.key = value || "";
   if (p.id === "anthropic") llm.resetClientForTests();
 }
 r.get("/api/connections", async () => {
   await checkAtlasBalance();
+  await checkSumeBalance();
   return { categories: providers.CATEGORIES, providers: providers.PROVIDERS.map(providerStatus) };
 });
 r.post("/api/connections/set", async ({ body, req }) => {
@@ -1163,6 +1188,7 @@ r.post("/api/connections/set", async ({ body, req }) => {
   // fal and OpenRouter: check prices now (for fal this also tests the key).
   if (p.id === "fal" || p.id === "openrouter") await pricewatch.checkPrices().catch(() => {});
   if (p.id === "atlas") await checkAtlasBalance(true);
+  if (p.id === "sume") { await checkSumeBalance(true); await pricewatch.checkPrices().catch(() => {}); }
   return providerStatus(p);
 });
 r.post("/api/connections/remove", async ({ body, req }) => {
@@ -1446,6 +1472,8 @@ r.post("/api/episode/versions/relabel-bulk", async ({ body }) =>
     }
     return { changed };
   }));
+
+r.post("/api/episode/version/cancel", async ({ body }) => jobs.cancelVersion(body.dir, body.versionId));
 
 r.post("/api/episode/version/delete", async ({ body }) =>
   edit(body.dir, (ep) => {

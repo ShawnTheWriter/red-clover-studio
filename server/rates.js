@@ -394,7 +394,7 @@ export const FAMILIES = [
 ];
 export const MODES = { frames: "Frames", refs: "References" };
 export const TIERS = { standard: "Standard", fast: "Fast", mini: "Mini" };
-export const VIAS = { fal: "fal", atlas: "Atlas", comfy: "Comfy" };
+export const VIAS = { fal: "fal", atlas: "Atlas", comfy: "Comfy", sume: "Sume" };
 
 const COORDS = {
   "minimax/h3/image-to-video": { family: "h3", mode: "frames", res: "2K" },
@@ -818,6 +818,65 @@ export const IMAGE_MODELS = [
     note: "fal's pricing API, checked 2026-09-21. Up to 10 reference images per call — the richest omni-reference support of the three still models.",
   },
 ];
+
+// ---------- Sume (wholesale; Shawn, 2026-10-23) ----------
+//
+// Sume resells the same models at the provider's price (0% markup) and
+// publishes every price, per output second, on a public catalog
+// (api.sume.com/v1/open/catalog, no key needed). Every row here copies a fal
+// row's coordinates (family, mode, tier, resolution), so cheapest route and the
+// VIA chips weigh Sume against fal and Atlas on the same model. The prices
+// below are the catalog as read on 2026-10-23; the price watch replaces them
+// with the live catalog (promos included) whenever Sume is connected.
+// Not carried over: Kling v3 and Wan 3.0 (fal's rows have no resolution and a
+// different Kling tier than Sume's Pro, so they would not be the same model).
+// Request fields (docs.sume.com, not yet run against a key): image_url /
+// end_image_url, reference_image_urls / reference_video_urls, resolution,
+// duration (integer), aspect_ratio, generate_audio (Seedance only).
+// Sume bills per OUTPUT second whatever the inputs are, so reference clips add
+// nothing here (fal and Atlas add a per-second charge for them).
+const SUME_MODELS = [
+  { model: "seedance-2.5", family: "sd25", tier: null, dur: [4, 30], seedance: true,
+    prices: { "480p": 0.1028, "720p": 0.2312, "1080p": 0.5686 }, modes: ["frames", "refs"] },
+  { model: "seedance-2", family: "sd20", tier: "standard", dur: [4, 15], seedance: true,
+    prices: { "480p": 0.0711, "720p": 0.1538, "1080p": 0.3846 }, modes: ["frames", "refs"] },
+  { model: "seedance-2-fast", family: "sd20", tier: "fast", dur: [4, 15], seedance: true,
+    prices: { "480p": 0.0572, "720p": 0.1231 }, modes: ["frames", "refs"] },
+  { model: "seedance-2-mini", family: "sd20", tier: "mini", dur: [4, 15], seedance: true,
+    prices: { "480p": 0.04, "720p": 0.08 }, modes: ["frames", "refs"] },
+  // H3 / H3 Max: the picker's resolution names are fal's ("768P"), Sume's are "768p".
+  { model: "minimax-h3", family: "h3", tier: null, dur: [5, 15], seedance: false,
+    prices: { "768P": 0.06, "2K": 0.13, "4K": 0.156 }, modes: ["frames"] },
+  { model: "minimax-h3-max", family: "h3max", tier: null, dur: [5, 15], seedance: false,
+    prices: { "480P": 0.05, "768P": 0.08, "1080P": 0.1 }, modes: ["frames", "refs"] },
+];
+for (const sm of SUME_MODELS) for (const mode of sm.modes) for (const [res, usd] of Object.entries(sm.prices)) {
+  const falRow = VIDEO_MODELS.find((m) => (m.via || "fal") === "fal" && m.family === sm.family && m.mode === mode && (m.tier || null) === sm.tier && m.res === res);
+  if (!falRow) continue;
+  const {
+    endpoint: _e, fixedParams: _f, falUnit: _u, conversion: _c, durationAsNumber: _d, refUSDPer1kTokens: _r1, refFreeTokens: _r2,
+    proven: _p, imageParams: _i, noTask: _n, maxRefAspect: _a, ...keep
+  } = falRow;
+  const row = {
+    ...keep,
+    id: `sume:${sm.model}/${mode === "refs" ? "reference-to-video" : "image-to-video"}@${res}`,
+    driver: "sume", via: "sume",
+    sume: { model: sm.model, fixed: { resolution: res.replace(/P$/, "p") }, aspect: sm.seedance },
+    short: `${falRow.short.replace(/-.*$/, "")}${res.replace(/[^0-9a-zA-Z]/g, "")}sm`,
+    usdPerVideoSecond: usd,
+    confidence: mode === "refs" ? "estimated" : "exact",
+    falUnit: "Sume: per output second",
+    note: `${falRow.label.replace(/ \(.*$/, "")} through Sume at the provider's price (0% markup), per output second. ${mode === "refs" ? "Reference images and clips add nothing to the price. " : ""}Not yet run against a Sume key.`,
+    durations: range(sm.dur[0], sm.dur[1]), minDuration: sm.dur[0],
+  };
+  if (sm.seedance) row.audioSwitch = true;
+  if (row.refVideo) row.refVideo = { ...row.refVideo, param: "reference_video_urls", usdPerSec: 0, confidence: "estimated" };
+  // Start + end frames AND references in one request is how the H3 Max row works on fal;
+  // Sume's page lists the modes separately, so this one only runs when picked.
+  if (sm.family === "h3max" && mode === "refs") row.optIn = true;
+  row.label = pickerLabel(row);
+  VIDEO_MODELS.push(row);
+}
 
 const VIDEO_BY_ID = new Map(VIDEO_MODELS.map((m) => [m.id, m]));
 const IMAGE_BY_ID = new Map(IMAGE_MODELS.map((m) => [m.id, m]));

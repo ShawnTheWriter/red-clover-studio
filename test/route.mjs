@@ -18,13 +18,15 @@ const { writeSettings } = await import("../server/settings.js");
 
 const FAL = "bytedance/seedance-2.5/image-to-video";
 const ATL = "atlas:bytedance/seedance-2.5/image-to-video";
-const all = () => true;
+// Sume (added 2026-10-23) has its own tests in sume.mjs; here it is "not connected".
+const all = (v) => v !== "sume";
+const SUME = "sume:seedance-2.5/image-to-video@720p";
 
 console.log("siblings");
-check("Seedance 2.5 frames 720p: fal and Atlas", R.routeSiblings(FAL).map((m) => m.id).sort().join() === [ATL, FAL].sort().join());
-check("1080p only pairs with 1080p", R.routeSiblings(`${FAL}@1080p`).map((m) => m.id).sort().join() === [`${ATL}@1080p`, `${FAL}@1080p`].sort().join());
+check("Seedance 2.5 frames 720p: fal, Atlas and Sume", R.routeSiblings(FAL).map((m) => m.id).sort().join() === [ATL, FAL, SUME].sort().join());
+check("1080p only pairs with 1080p", R.routeSiblings(`${FAL}@1080p`).map((m) => m.id).sort().join() === [`${ATL}@1080p`, `${FAL}@1080p`, "sume:seedance-2.5/image-to-video@1080p"].sort().join());
 check("references never pair with frames", !R.routeSiblings("bytedance/seedance-2.5/reference-to-video").some((m) => m.mode !== "refs"));
-check("a model only fal sells has no other route", R.routeSiblings("minimax/h3-max/image-to-video").length === 1);
+check("a model only fal sells has no other route", R.routeSiblings("fal-ai/kling-video/v3/standard/image-to-video").length === 1);
 
 console.log("\nchoice");
 check("both connected: the cheaper table price wins (Atlas)", R.cheapestRoute(FAL, all).modelId === ATL);

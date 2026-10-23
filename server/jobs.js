@@ -28,6 +28,7 @@ import { FalDriver } from "./drivers/fal.js";
 import { GeminiDriver } from "./drivers/gemini.js";
 import { ReplicateDriver } from "./drivers/replicate.js";
 import { AtlasDriver } from "./drivers/atlas.js";
+import { SumeDriver } from "./drivers/sume.js";
 import { ComfyDriver } from "./drivers/comfy.js";
 import { MockDriver } from "./drivers/mock.js";
 import { nearestSellable } from "../shared/schema.js";
@@ -68,6 +69,7 @@ export const drivers = {
   gemini: new GeminiDriver(),
   replicate: new ReplicateDriver(),
   atlas: new AtlasDriver(),
+  sume: new SumeDriver(),
   comfy: new ComfyDriver(),
   mock: new MockDriver(),
 };
@@ -231,7 +233,8 @@ export function quote(ep, { shotIds, modelIds, seconds, route = cheapestRouteOn(
         modelLabel: m ? m.label : modelId,
         seconds: secs,
         estimateUSD: round2(est.usd + refUSD),
-        confidence: est.confidence,
+        // Sume publishes exact prices, so its live (promo-aware) price is a quote, not a guess.
+        confidence: est.confidence === "live" && m && m.driver === "sume" ? "exact" : est.confidence,
         rate: est.rate,
         ...(rt.routed ? (() => {
           const was = estimateVideoUSD(pickedId, secs);
@@ -265,6 +268,7 @@ class BudgetError extends Error {
 
 const running = new Set();   // version ids currently being polled
 const pending = [];          // [{ dir, versionId }]
+const cancelled = new Set(); // versions the user cancelled while their poll loop was live
 
 export async function submitFanOut(dir, opts) {
   // The whole check-and-commit runs under the episode write lock. Quoting,
@@ -886,6 +890,41 @@ REVISION of the first reference image (the previous generation for this shot): $
   return { shotId, beatId, frame, referencesUsed: referenceImages.length, promptUsed: prompt, ledger: ledgerState(await store.loadEpisode(dir)) };
 }
 
+// Cancel one take. Still waiting in our own queue: drop it, nothing was sent,
+// nothing is charged. Already sent: ask the provider to drop it, and only mark
+// it cancelled (uncharged) if the provider really did; otherwise the job keeps
+// running and billing, so the take stays and the reason is returned.
+export async function cancelVersion(dir, versionId) {
+  const ep0 = await store.loadEpisode(dir);
+  let v0 = null;
+  for (const s of ep0.shots || []) { v0 = (s.versions || []).find((x) => x.id === versionId); if (v0) break; }
+  if (!v0) throw Object.assign(new Error("take not found"), { status: 404 });
+  if (v0.state !== "queued" && v0.state !== "running") throw Object.assign(new Error(`this take is already ${v0.state}`), { status: 409 });
+
+  const i = pending.findIndex((p) => p.versionId === versionId);
+  if (i >= 0) pending.splice(i, 1);
+  else {
+    if (!v0.jobId) throw Object.assign(new Error("This take is still being sent to the provider. Try again in a few seconds."), { status: 409 });
+    const d = drivers[v0.driver];
+    let r;
+    try { r = await d.cancelJob({ jobId: v0.jobId, modelId: v0.modelId, statusUrl: v0.statusUrl }); }
+    catch (err) { r = { cancelled: false, reason: err.message }; }
+    if (!r.cancelled) throw Object.assign(new Error(`Could not cancel: ${r.reason || "the provider refused"}. The take keeps running; dismiss it after it lands if you don't want it.`), { status: 409 });
+    cancelled.add(versionId);
+  }
+  const out = await store.withEpisode(dir, (ep) => {
+    for (const s of ep.shots || []) {
+      const v = (s.versions || []).find((x) => x.id === versionId);
+      if (v && (v.state === "queued" || v.state === "running")) {
+        Object.assign(v, { state: "cancelled", error: "Cancelled by you. Nothing was billed.", finishedAt: new Date().toISOString() });
+        return { ...v };
+      }
+    }
+    return null;
+  });
+  return { version: out };
+}
+
 // Is this version already being handled by THIS process? Anything on disk can
 // look queued or running while a live job owns it.
 function isTracked(versionId) {
@@ -1098,6 +1137,7 @@ async function runVersion({ dir, versionId, reattach = false }) {
         return;
       }
       await new Promise((r) => setTimeout(r, POLL_MS));
+      if (cancelled.delete(versionId)) return;
       const st = await d.getJob({ jobId: sub.jobId, modelId: version.modelId, statusUrl: sub.statusUrl, responseUrl: sub.responseUrl });
       if (st.state === "error") {
         // fal answers 422 at the RESULT when the model itself refuses the inputs
@@ -1112,7 +1152,7 @@ async function runVersion({ dir, versionId, reattach = false }) {
             ? `fal's model refused these inputs (422), so nothing was billed. For Seedance this is usually a realistic face in a reference image: the Atlas rows accept them. fal said: ${String(st.error).slice(0, 500)}`
             : st.error,
           started,
-          refused ? { charge: false } : {},
+          refused || st.noCharge ? { charge: false } : {},
         );
         return;
       }

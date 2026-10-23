@@ -991,12 +991,14 @@ function sceneGroups() {
   return [...byNum.values()].sort((a, b) => n(a.num) - n(b.num));
 }
 
-// "X" is the "Cut from edit" bin that Organize fills: shots that are out of
-// the Resolve cut, kept so they can come back.
+// "X" is the Archive: shots that are out of the edit, kept so they can come
+// back. Organize fills it from a Resolve cut; Shawn can also drag a shot onto
+// it (or pick "Archive" in Move to scene…). The timeline, every export, sound
+// placement and the gates skip it (shot.cutFromEdit).
 const CUT_SCENE = "X";
 
 function sceneHeading(g) {
-  if (g.num === CUT_SCENE) return "Cut from edit — out of the Resolve cut, kept for restore";
+  if (g.num === CUT_SCENE) return "Archive — not in the edit, kept so a shot can be restored";
   const h = g.scene && g.scene.heading && g.scene.heading !== "(no slugline)" ? g.scene.heading : "";
   // After Organize the number is the cut's; the screenplay's is a just-in-case.
   const script = g.scene && g.scene.scriptNumber && String(g.scene.scriptNumber) !== g.num ? ` (script ${g.scene.scriptNumber})` : "";
@@ -1130,6 +1132,7 @@ function shotSceneMoveSelect(shot) {
   const restoring = shot.sceneNum === CUT_SCENE;
   opt("", restoring ? "Restore to scene…" : "Move to scene…");
   if (restoring) sel.title = `Cut from edit${shot.cutFromEdit ? ` (was ${shot.cutFromEdit.fromCode})` : ""}. Restore it into a scene.`;
+  if (!restoring) opt(`${CUT_SCENE}|end`, "Archive (not in the edit)");
   sceneGroups().forEach((g) => {
     if (g.num === shot.sceneNum || g.num === CUT_SCENE) return;
     const og = document.createElement("optgroup"); og.label = sceneHeading(g);
@@ -1145,7 +1148,7 @@ function shotSceneMoveSelect(shot) {
       const r = await post("/api/episode/shot/move-to-scene", { dir: EP.dir, shotId: shot.id, targetSceneNum, position });
       PROMPTS = await api(`/api/episode/prompts?dir=${encodeURIComponent(EP.dir)}`);
       await reloadEpisode();
-      flashNote(`Moved to scene ${r.sceneNum} as ${r.sceneNum}${r.shotCode}. Undo reverses it.`);
+      flashNote(r.sceneNum === CUT_SCENE ? `Archived — out of the edit and every export. Restore it from the Archive. Undo reverses it.` : `Moved to scene ${r.sceneNum} as ${r.sceneNum}${r.shotCode}. Undo reverses it.`);
     } catch (e) { sel.value = ""; fail(e); }
   };
   return sel;
@@ -1696,7 +1699,7 @@ function pickBest(models, want) {
 // connected service that sells the same model for less. The quote says so.
 let CHEAPEST_ROUTE = null; // null until /api/settings answers; the server default is on
 function loadRouteSetting() { if (CHEAPEST_ROUTE == null) api("/api/settings").then((s) => { CHEAPEST_ROUTE = s.cheapestRoute !== false; }).catch(() => {}); }
-const VIA_NAMES = { atlas: "Atlas", comfy: "Comfy" };
+const VIA_NAMES = { atlas: "Atlas", comfy: "Comfy", sume: "Sume" };
 const viaName = (id) => { const m = MODELS && MODELS.video && MODELS.video.find((x) => x.id === id); const v = (m && m.via) || "fal"; return VIA_NAMES[v] || v; };
 function routeNote(q) {
   const moved = (q.lines || []).filter((l) => l.routedFrom);
@@ -1756,9 +1759,9 @@ function videoModelPicker(models, curId, onPick) {
         CHEAPEST_ROUTE = r.cheapestRoute; onPick(cur.id);
       } catch (e) { fail(e); }
     };
-    rowOf("VIA", [auto, ...vias.map((m) => chip(`${VIA_NAMES[m.via || "fal"] || "fal"} ${pickEst(m)}${pickMoney(m)}`, m.id === cur.id, m, ready(m.via || "fal") ? "" : `Connect ${m.via} in Connections first`))]);
+    rowOf("VIA", [auto, ...vias.map((m) => chip(`${VIA_NAMES[m.via || "fal"] || "fal"} ${pickEst(m)}${pickMoney(m)}`, m.id === cur.id, m, ready(m.via || "fal") ? "" : `Connect ${VIA_NAMES[m.via] || m.via} in Connections first`))]);
   }
-  if (!ready(cur.via || "fal")) box.append(el("div", "rc-muted warn", `${{ atlas: "Atlas Cloud", comfy: "Comfy" }[cur.via] || cur.via} isn't connected — add its key in Connections (⚙︎) before generating.`));
+  if (!ready(cur.via || "fal")) box.append(el("div", "rc-muted warn", `${{ atlas: "Atlas Cloud", comfy: "Comfy", sume: "Sume" }[cur.via] || cur.via} isn't connected — add its key in Connections (⚙︎) before generating.`));
   return box;
 }
 
@@ -1783,7 +1786,7 @@ function videoGeneratePane(shot) {
     const takesHost = el("div"); takesHost.style.marginTop = "10px";
     const head = el("div", "row"); head.style.cssText = "align-items:center;gap:8px";
     head.append(Object.assign(el("div", "mini"), { textContent: "Takes for this shot:" }));
-    const failed = (shot.versions || []).filter((v) => v.state === "error");
+    const failed = (shot.versions || []).filter((v) => v.state === "error" || v.state === "cancelled");
     if (failed.length) {
       const clr = el("button", null, `Clear ${failed.length} failed`);
       clr.style.cssText = "font-size:11px;padding:2px 8px";
@@ -2052,13 +2055,16 @@ function videoGeneratePane(shot) {
         quoteHost.append(qRow);
         const rn = routeNote(q); if (rn) quoteHost.append(rn);
         if (q.uncalibrated.length) {
-          quoteHost.append(Object.assign(el("div", "mini"), { textContent: "Estimate only — this model bills in units fal can't quote before a run.", style: "color:var(--warn);margin-top:2px" }));
+          quoteHost.append(Object.assign(el("div", "mini"), { textContent: "Estimate only — this model bills in units its service can't quote before a run.", style: "color:var(--warn);margin-top:2px" }));
         }
 
         const genBtn = el("button", "primary", `Generate video — $${q.totalUSD.toFixed(2)}`);
         genBtn.disabled = !q.fitsInBudget;
         genBtn.style.marginTop = "6px";
         genBtn.onclick = async () => {
+          // A second click on the same model a moment later is nearly always an accident.
+          const dup = (shot.versions || []).filter((v) => (v.state === "queued" || v.state === "running") && v.modelId === sel.modelId && !v.op);
+          if (dup.length && !confirm(`This shot already has ${dup.length} ${model.label} take${dup.length === 1 ? "" : "s"} queued or running.\n\nQueue another one anyway?`)) return;
           if (q.needsConfirmation) {
             const ok = confirm(`Generate 1 clip on ${q.lines[0] ? q.lines[0].modelLabel : model.label}?\n\nEstimated cost: $${q.totalUSD.toFixed(2)}\nBudget left after: $${(q.ledger.remainingUSD - q.totalUSD).toFixed(2)}\n\nProceed?`);
             if (!ok) return;
@@ -3504,8 +3510,8 @@ function claudePromptTool(shot, sel) {
 function claudeShotsTool(g) {
   const det = el("details"); det.style.cssText = "margin:2px 0 8px;font-size:12px";
   const saved = claudeProposal(g);
-  det.open = !!saved;
-  det.append(Object.assign(el("summary"), { textContent: "Propose shots for this scene with Claude…", style: "cursor:pointer;color:var(--dim)" }));
+  // Stays closed until you open it; a saved proposal is flagged on the summary line instead of forcing the panel open.
+  det.append(Object.assign(el("summary"), { textContent: saved ? "Propose shots for this scene with Claude… (a saved proposal is waiting)" : "Propose shots for this scene with Claude…", style: "cursor:pointer;color:var(--dim)" }));
   const body = el("div"); body.style.cssText = "display:flex;flex-direction:column;gap:6px;margin:6px 0;padding:8px;border:1px solid var(--line);border-radius:8px";
   det.append(body);
   det.ontoggle = async () => {
@@ -3791,7 +3797,7 @@ async function refreshQuote(box, card, led) {
 
     if (q.uncalibrated.length) {
       host.append(Object.assign(el("div", "mini"), {
-        textContent: `Estimate only — ${q.uncalibrated.join(", ")} ${q.uncalibrated.length === 1 ? "bills" : "bill"} in units fal can't quote before a run, so ${q.uncalibrated.length === 1 ? "this is a deliberately high ceiling, not a price" : "these are deliberately high ceilings, not prices"}.`,
+        textContent: `Estimate only — ${q.uncalibrated.join(", ")} ${q.uncalibrated.length === 1 ? "bills" : "bill"} in units the service can't quote before a run, so ${q.uncalibrated.length === 1 ? "this is a deliberately high ceiling, not a price" : "these are deliberately high ceilings, not prices"}.`,
         style: "color:var(--warn);margin-top:4px",
       }));
     }
@@ -4141,7 +4147,7 @@ function versionRow(v) {
   }
   if (v.elapsedMs) row.append(Object.assign(el("span", "mini"), { textContent: `${Math.round(v.elapsedMs / 1000)}s` }));
 
-  if (v.state === "error") {
+  if (v.state === "error" || v.state === "cancelled") {
     // The first line only; the whole message (often a long request dump) is one click away.
     const full = String(v.error || "failed");
     const first = (full.split("\n")[0] || full).slice(0, 180) + (full.length > 180 || full.includes("\n") ? "…" : "");
@@ -4205,10 +4211,21 @@ function versionRow(v) {
     sm.title = `Package this take's prompt, frames and settings as a reusable shot module. ${MODULES_SOON}`;
     row.append(sm);
   }
-  const del = el("button", null, v.state === "error" ? "Dismiss" : "✕");
-  del.title = v.state === "error" ? "Remove this failed take from the list (it never produced a video)." : "Remove this take from the tray (the file stays on disk).";
+  const gone = v.state === "error" || v.state === "cancelled";
+  if (v.state === "queued" || v.state === "running") {
+    const cx = el("button", null, "Cancel");
+    cx.title = "Stop this take. If it hasn't started at the provider it costs nothing; if the provider already started it, the take keeps running and the app says so.";
+    cx.onclick = async () => {
+      cx.disabled = true;
+      try { await post("/api/episode/version/cancel", { dir: EP.dir, versionId: v.id }); await reloadEpisode(v.shotId); }
+      catch (e) { cx.disabled = false; fail(e); }
+    };
+    row.append(cx);
+  }
+  const del = el("button", null, gone ? "Dismiss" : "✕");
+  del.title = gone ? "Remove this failed or cancelled take from the list (it never produced a video)." : "Remove this take from the tray (the file stays on disk).";
   del.onclick = async () => {
-    if (v.state === "error") {
+    if (gone) {
       try { await post("/api/episode/version/delete", { dir: EP.dir, versionId: v.id }); await reloadEpisode(v.shotId); } catch (e) { fail(e); }
       return;
     }
@@ -5377,7 +5394,7 @@ function sceneStats(g) {
   return { boards, appr, clips, shots: g.shots.length };
 }
 const pctOf = (a, b) => (b ? Math.round((a / b) * 100) : 0);
-const sceneTitle = (g) => (g.num === CUT_SCENE ? "Cut from edit" : (g.scene && g.scene.heading && g.scene.heading !== "(no slugline)" ? g.scene.heading : `Scene ${g.num}`));
+const sceneTitle = (g) => (g.num === CUT_SCENE ? "Archive (not in the edit)" : (g.scene && g.scene.heading && g.scene.heading !== "(no slugline)" ? g.scene.heading : `Scene ${g.num}`));
 
 function meterRow(label, a, b) {
   const r = el("div", "rc-mm");
@@ -5529,7 +5546,7 @@ function sceneRail(groups) {
     row.title = sceneHeading(g);
     const num = el("div", "num");
     num.innerHTML = `<b></b>${ringSvg(s.appr + s.clips, s.boards + s.shots)}`;
-    num.querySelector("b").textContent = g.num === CUT_SCENE ? "CUT" : String(g.num).padStart(2, "0");
+    num.querySelector("b").textContent = g.num === CUT_SCENE ? "ARC" : String(g.num).padStart(2, "0");
     const body = el("div", "body");
     body.append(el("div", "hd", sceneTitle(g)));
     if (s.shots) body.append(meterRow("BOARD", s.appr, s.boards), meterRow("CLIP", s.clips, s.shots));
@@ -5537,8 +5554,19 @@ function sceneRail(groups) {
     row.append(num, body);
     row.onclick = () => goScene(g.num);
     if (g.num !== CUT_SCENE) dragScene(row, g, groups);
+    else archiveDropTarget(row);
     nav.append(row);
   });
+  // The Archive is always a drop target, even before anything is in it.
+  if (!groups.some((g) => g.num === CUT_SCENE)) {
+    const row = el("div", "rc-rl rc-arch-empty");
+    row.title = "Drag a shot here to archive it: it leaves the edit and every export, and can be restored later";
+    const num = el("div", "num"); num.append(el("b", null, "ARC"));
+    const body = el("div", "body"); body.append(el("div", "hd", "Archive"), el("div", "rc-muted", "Drag shots here"));
+    row.append(num, body);
+    archiveDropTarget(row);
+    nav.append(row);
+  }
   nav.append(el("div", "rc-spacer"), el("div", "rc-legend", "RING = BOARDS + CLIPS DONE"));
   return nav;
 }
@@ -5556,7 +5584,7 @@ function contactSheet(g) {
   if (!g) { sec.append(el("div", "rc-emptyst", "No scenes yet — import the script in SCRIPT.")); return sec; }
   const s = sceneStats(g);
   const sh = el("div", "rc-sh");
-  const t = el("span"); t.append(el("b", null, g.num === CUT_SCENE ? "CUT" : `SC ${g.num}`), document.createTextNode(` · ${sceneTitle(g).toUpperCase()}`));
+  const t = el("span"); t.append(el("b", null, g.num === CUT_SCENE ? "ARCHIVE" : `SC ${g.num}`), document.createTextNode(` · ${sceneTitle(g).toUpperCase()}`));
   sh.append(t);
   const right = el("span", "rc-shr");
   right.append(el("span", null, s.shots ? `${s.shots} SHOTS · BOARDS ${s.appr}/${s.boards} · CLIPS ${s.clips}/${s.shots}` : "NO SHOTS"));
@@ -5576,11 +5604,10 @@ function contactSheet(g) {
     tools.append(Object.assign(el("summary"), { textContent: "SCENE TOOLS" }));
     tools.append(sceneRenumberControls(g));
     // Claude's shot proposals, for scenes that already have shots too (it
-    // sat under every scene before the redesign). Opens itself when a
-    // proposal is waiting.
+    // sat under every scene before the redesign). Stays closed; a saved
+    // proposal is flagged on its summary line.
     if (g.shots.length && (EP.scenes || []).some((x) => String(x.number) === String(g.num))) {
       tools.append(claudeShotsTool(g));
-      if (claudeProposal(g)) tools.open = true;
     }
     sec.append(tools);
   }
@@ -5603,11 +5630,17 @@ function contactSheet(g) {
       if (p) { const im = el("img"); im.loading = "lazy"; im.src = mediaURL(p, 240); c.append(im); }
       else c.append(el("div", "noimg", "NO BOARD"));
       c.append(el("div", "lbl", shot.label || shot.action || "(untitled)"));
+      if (g.num === CUT_SCENE && shot.cutFromEdit && shot.cutFromEdit.fromCode) c.append(el("div", "rc-muted", `was ${shot.cutFromEdit.fromCode}`));
       c.onclick = () => selectShot(shot.id);
       if (g.num !== CUT_SCENE) dragShot(c, shot, g);
       cells.append(c);
     });
     sec.append(cells);
+    if (g.num !== CUT_SCENE) {
+      const zone = el("div", "rc-arch-zone", "Drag a shot here to archive it (out of the edit, restorable)");
+      archiveDropTarget(zone);
+      sec.append(zone);
+    }
   }
   return sec;
 }
@@ -7169,6 +7202,28 @@ function dragShot(cell, shot, g) {
       if (r.moved && now) flashNote(`${from} is now ${shotCode(now)} — scene ${g.num} re-lettered. ⌘Z undoes it.`);
     } catch (err) { fail(err); }
   };
+}
+
+// The Archive accepts a dragged shot from any scene (rail row, or the zone
+// under a scene's shots). One server edit, so ⌘Z undoes it.
+function archiveDropTarget(node) {
+  node.addEventListener("dragover", (e) => {
+    if (!DRAG || DRAG.kind !== "shot" || DRAG.scene === CUT_SCENE) return;
+    e.preventDefault(); node.classList.add("drop-arch");
+  });
+  node.addEventListener("dragleave", () => node.classList.remove("drop-arch"));
+  node.addEventListener("drop", async (e) => {
+    e.preventDefault(); node.classList.remove("drop-arch");
+    if (!DRAG || DRAG.kind !== "shot" || DRAG.scene === CUT_SCENE) return;
+    const moving = (EP.shots || []).find((s) => s.id === DRAG.id);
+    const from = moving ? shotCode(moving) : "";
+    try {
+      const r = await post("/api/episode/shot/move-to-scene", { dir: EP.dir, shotId: DRAG.id, targetSceneNum: CUT_SCENE, position: "end" });
+      PROMPTS = await api(`/api/episode/prompts?dir=${encodeURIComponent(EP.dir)}`);
+      await reloadEpisode();
+      flashNote(`${from} archived: out of the edit and every export${r.rebuilt ? " (timeline updated)" : ""}. Restore it from the Archive. ⌘Z undoes it.`);
+    } catch (err) { fail(err); }
+  });
 }
 
 function dragScene(row, g, groups) {

@@ -18,6 +18,7 @@ import { LLM_MODELS, openRouterId } from "./llm.js";
 const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CACHE = process.env.RCS_PRICES_FILE || path.join(REPO, ".rcs-prices.json");
 const FAL_PRICING = process.env.RCS_FAL_PRICING_URL || "https://api.fal.ai/v1/models/pricing";
+const SUME_CATALOG = process.env.RCS_SUME_CATALOG_URL || "https://api.sume.com/v1/open/catalog";
 const OPENROUTER_MODELS = process.env.RCS_OPENROUTER_MODELS_URL || "https://openrouter.ai/api/v1/models";
 const EVERY_MS = 6 * 60 * 60 * 1000;
 const TOLERANCE = 0.02; // ignore moves under 2%
@@ -64,6 +65,27 @@ async function fetchFal(fetchImpl) {
   return { rows: out };
 }
 
+// Sume publishes every model's USD price per output second on a public list
+// (no key needed to read it; only asked once Sume is connected). A promo shows
+// up here like any other price change.
+async function fetchSume(fetchImpl) {
+  if (!process.env.SUME_API_KEY) return { skipped: "Sume not connected" };
+  const res = await fetchImpl(SUME_CATALOG);
+  if (!res.ok) throw new Error(`Sume catalog ${res.status}`);
+  const list = ((await res.json()).data || {}).models || [];
+  const byId = new Map(list.map((m) => [m.id, m]));
+  const out = [];
+  for (const m of VIDEO_MODELS.filter((x) => x.driver === "sume")) {
+    const cat = byId.get(m.sume.model);
+    const want = String(m.sume.fixed.resolution).toLowerCase();
+    const opt = cat && ((cat.pricing || {}).options || []).find((o) => String(o.resolution || o.label || "").toLowerCase() === want);
+    const usd = opt ? Number(opt.usd) : NaN;
+    if (!Number.isFinite(usd)) { out.push({ id: m.id, label: m.label, unknown: true }); continue; }
+    out.push({ id: m.id, label: m.label, kind: "video", unit: "second", unitPrice: usd, usd, table: m.usdPerVideoSecond, source: "sume" });
+  }
+  return { rows: out };
+}
+
 async function fetchOpenRouter(fetchImpl) {
   // Only when a Claude connection exists: no calls out for services not in use.
   if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENROUTER_API_KEY) return { skipped: "Claude not connected" };
@@ -86,7 +108,7 @@ async function fetchOpenRouter(fetchImpl) {
 export async function checkPrices({ fetchImpl = fetch, now = () => new Date() } = {}) {
   const prev = (await loadCache()) || { prices: {} };
   const errors = [], rows = [], skipped = [];
-  for (const [name, fn] of [["fal", fetchFal], ["OpenRouter", fetchOpenRouter]]) {
+  for (const [name, fn] of [["fal", fetchFal], ["Sume", fetchSume], ["OpenRouter", fetchOpenRouter]]) {
     try {
       const r = await fn(fetchImpl);
       if (r.skipped) skipped.push(r.skipped); else rows.push(...r.rows);

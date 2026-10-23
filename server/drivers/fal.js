@@ -293,6 +293,19 @@ export class FalDriver extends BaseDriver {
     }
   }
 
+  // fal can drop a request only while it is still IN_QUEUE (PUT .../cancel).
+  // Once it is running the answer is 400 and the job finishes and bills.
+  async cancelJob({ jobId, modelId, statusUrl }) {
+    const path_ = (videoModel(modelId) || {}).endpoint || modelId;
+    const base = statusUrl ? statusUrl.replace(/\/status$/, "") : `${QUEUE_BASE}/${path_}/requests/${jobId}`;
+    const res = await fetch(`${base}/cancel`, { method: "PUT", headers: this.headers() });
+    if (res.ok) {
+      const b = await res.json().catch(() => ({}));
+      if (b.status === "CANCELLATION_REQUESTED" || b.status === "CANCELLED" || b.status === undefined) return { cancelled: true };
+    }
+    return { cancelled: false, reason: "fal had already started this one, so it will finish and bill" };
+  }
+
   async getJob({ jobId, modelId, statusUrl, responseUrl }) {
     const path_ = (videoModel(modelId) || {}).endpoint || modelId;
     const sUrl = statusUrl || `${QUEUE_BASE}/${path_}/requests/${jobId}/status`;
