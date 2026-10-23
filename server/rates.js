@@ -672,6 +672,7 @@ export const UPSCALE_MODELS = [
     id: "fal-ai/seedvr/upscale/video",
     short: "SeedVR2", // model code in take file names
     label: "SeedVR2 (sharpest)",
+    family: "seedvr", via: "fal",
     driver: "fal",
     billing: "megapixel",
     usdPerMegapixel: 0.001,
@@ -682,11 +683,53 @@ export const UPSCALE_MODELS = [
     id: "fal-ai/bytedance-upscaler/upscale/video",
     short: "BDUp", // model code in take file names
     label: "Bytedance (fast, cheap)",
+    family: "bdup", via: "fal",
     driver: "fal",
     billing: "second",
     usdPerSecond: 0.0072,
     confidence: "exact",
     note: "Cleaner but smoother and softer. About 3 minutes for 11 s. Standard tier, AI-video preset.",
+  },
+  // The same Bytedance upscaler, sold by Atlas Cloud (Atlas's readme, read 2026-10-23):
+  // $0.00344333 per second x 2 for 1080p, x 1 at 30 fps or less (we send the take's rate,
+  // capped at 30) = $0.0069 per second, a touch under fal's $0.0072. Not yet billed.
+  {
+    id: "atlas:byteplus/video/upscaler",
+    short: "BDUpAtl",
+    label: "Bytedance (fast, cheap)",
+    family: "bdup", via: "atlas",
+    driver: "atlas",
+    billing: "second",
+    usdPerSecond: 0.0069,
+    confidence: "estimated",
+    note: "Cleaner but smoother and softer. The same Bytedance upscaler as the fal row, through Atlas Cloud. Standard engine, AI-video scene.",
+  },
+  // Atlas's own upscaler (FlashVSR-priced): 1080p $0.018 per second, 5 s minimum, input
+  // 30 fps or less and 53 s at most. A different model from the two above: untested here.
+  {
+    id: "atlas:atlascloud/video-upscaler",
+    short: "AtlUp",
+    label: "Atlas Video Upscaler",
+    family: "atlasup", via: "atlas",
+    driver: "atlas",
+    billing: "second",
+    usdPerSecond: 0.018,
+    minSeconds: 5,
+    confidence: "exact",
+    note: "Atlas Cloud's own upscaler, 1080p, source timing kept. Input must be 30 fps or less and at most 53 s; billed from 5 s. Not yet compared with SeedVR2 on your footage.",
+  },
+  // Topaz Video on Sume (catalog read 2026-10-23): 1080p $0.04 per second, billed double
+  // above 30 fps or when no frame rate is sent (we send the take's, capped at 30).
+  {
+    id: "sume:topaz-video",
+    short: "Topaz",
+    label: "Topaz Video",
+    family: "topaz", via: "sume",
+    driver: "sume",
+    billing: "second",
+    usdPerSecond: 0.04,
+    confidence: "estimated",
+    note: "Topaz's video upscaler (Proteus model) through Sume. A different model from the others and the priciest per second; not yet compared on your footage.",
   },
 ];
 const UPSCALE_BY_ID = new Map(UPSCALE_MODELS.map((m) => [m.id, m]));
@@ -709,7 +752,7 @@ export function estimateUpscaleUSD(modelId, { seconds, fps = 24, target = "1080p
   if (!m) throw Object.assign(new Error(`unknown upscale model "${modelId}" — check rates.js UPSCALE_MODELS`), { status: 400 });
   const n = Number(seconds);
   if (!Number.isFinite(n) || n <= 0) throw Object.assign(new Error(`invalid duration ${JSON.stringify(seconds)}`), { status: 400 });
-  if (m.billing === "second") return { usd: m.usdPerSecond * n, confidence: m.confidence, rate: m.usdPerSecond };
+  if (m.billing === "second") return { usd: m.usdPerSecond * Math.max(n, m.minSeconds || 0), confidence: m.confidence, rate: m.usdPerSecond };
   // Ceiling: a 16:9 frame at the target's short edge, at the take's frame rate.
   const f = Number(fps) || 24;
   const size = upscaleOutputSize(9, 16, target);

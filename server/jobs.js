@@ -19,7 +19,7 @@
 import path from "node:path";
 import fs from "node:fs/promises";
 import * as store from "./store.js";
-import { estimateVideoUSD, videoModel, estimateImageUSD, imageModel, estimateLipsyncUSD, lipsyncModel, LIPSYNC_SYNC_MODES, modelShort, referenceUSD, refVideoUSD, cheapestRoute, upscaleModel, estimateUpscaleUSD, UPSCALE_TARGETS, finishModel, estimateFinishUSD, FINISH_MODELS } from "./rates.js";
+import { estimateVideoUSD, videoModel, estimateImageUSD, imageModel, estimateLipsyncUSD, lipsyncModel, LIPSYNC_SYNC_MODES, modelShort, referenceUSD, refVideoUSD, cheapestRoute, upscaleModel, estimateUpscaleUSD, UPSCALE_TARGETS, finishModel, estimateFinishUSD, FINISH_MODELS, VIAS } from "./rates.js";
 import { probe } from "./ffprobe.js";
 import { trimmedCopy, normalizeUpscaled } from "./upscale.js";
 import { trimSpans, spansDuration, isWholeTake } from "../shared/trim.js";
@@ -672,8 +672,10 @@ export function quoteUpscale(ep, opts) {
 }
 
 function commitUpscale(ep, opts) {
-  const { driver = "fal", confirmedUSD } = opts;
+  const { confirmedUSD } = opts;
   const { shot, take, model, target, spans, seconds } = upscaleInputs(ep, opts);
+  // The model row IS the route (fal, Atlas or Sume); only "mock" overrides it.
+  const driver = opts.driver === "mock" ? "mock" : (model.driver || "fal");
   const q = quoteUpscale(ep, opts);
   enforceSpendGuards(q, confirmedUSD);
 
@@ -692,7 +694,7 @@ function commitUpscale(ep, opts) {
     spans,                          // the kept pieces [{ inSec, outSec }]; null = the whole take
     target,
     modelId: model.id,
-    modelLabel: `Upscale ${target} (${model.label}) — ${take.modelLabel || "take"}`,
+    modelLabel: `Upscale ${target} (${model.label}${model.via && model.via !== "fal" ? ` · ${VIAS[model.via] || model.via}` : ""}) — ${take.modelLabel || "take"}`,
     driver,
     seconds,
     keyframePath: null,
@@ -1088,13 +1090,13 @@ async function runVersion({ dir, versionId, reattach = false }) {
     } else if (version.op === "upscale") {
       if (typeof d.generateUpscale !== "function") throw new Error(`driver "${version.driver}" can't upscale`);
       const srcAbs = store.safeResolve(version.sourcePath);
-      let fps = 24;
-      try { fps = (await probe(srcAbs)).fps || 24; } catch { /* the quote's 24 fps stands */ }
+      let fps = 24, sourceShort = null;
+      try { const pr = await probe(srcAbs); fps = pr.fps || 24; sourceShort = Math.min(pr.width || 0, pr.height || 0) || null; } catch { /* the quote's 24 fps stands */ }
       let sendPath = srcAbs, tmp = null;
       // Only the part used in the cut is sent (and paid for).
       if (version.spans && version.driver !== "mock") tmp = sendPath = await trimmedCopy(srcAbs, version.spans);
       try {
-        sub = await d.generateUpscale({ videoPath: sendPath, modelId: version.modelId, target: version.target, fps });
+        sub = await d.generateUpscale({ videoPath: sendPath, modelId: version.modelId, target: version.target, fps, seconds: version.seconds, sourceShort });
       } finally {
         if (tmp) await fs.rm(tmp, { force: true });
       }

@@ -3908,7 +3908,7 @@ function lipsyncPanel(v, onClose) {
   modeSel.title = "What to do when the audio and the take differ in length (sync.so's own modes)";
   const driverSel = mk([["fal", "fal (paid)"], ["mock", "mock (free rehearsal)"]]);
   const g = el("div", "grid g2");
-  g.append(labeled("Audio line", audioSel), labeled("Model", modelSel), labeled("If lengths differ", modeSel), labeled("Driver", driverSel));
+  g.append(labeled("Audio line", audioSel), labeled("Model", modelSel), labeled("If lengths differ", modeSel), labeled("Service", driverSel));
   box.append(g);
 
   const info = el("div", "mini"); info.style.margin = "6px 0";
@@ -4006,14 +4006,19 @@ function upscalePanel(v, onClose) {
   const kept = tt ? trimSpans(tt, full) : null;
   const hasTrim = !!kept && kept.length > 0 && !isWholeTake(kept, full);
   const mk = (opts) => { const s = document.createElement("select"); opts.forEach(([val, txt]) => { const o = document.createElement("option"); o.value = val; o.textContent = txt; s.append(o); }); return s; };
+  // One entry per upscale MODEL; the services that sell it (fal, Atlas, Sume) are the Driver
+  // choices, each with its price for this take.
   const models = GRAMMAR.upscaleModels || [];
-  const modelSel = mk(models.map((m) => [m.id, m.label]));
+  const families = models.filter((m, i) => models.findIndex((x) => x.family === m.family) === i);
+  const VIA_UP = { fal: "fal", atlas: "Atlas", sume: "Sume" };
+  const modelSel = mk(families.map((m) => [m.family, m.label]));
   const spanSel = mk(hasTrim
     ? [["trim", `Only the part used in the cut (${+spansDuration(kept).toFixed(2)}s${kept.length > 1 ? `, ${kept.length} pieces joined` : ""})`], ["whole", `The whole take (${+full.toFixed(2)}s)`]]
     : [["whole", `The whole take (${+full.toFixed(2)}s)`]]);
-  const driverSel = mk([["fal", "fal (paid)"], ["mock", "mock (free rehearsal)"]]);
+  const driverSel = mk([]);
+  let routeChosen = false; // once you pick a service by hand, a model change keeps it if it can
   const g = el("div", "grid g2");
-  g.append(labeled("Model", modelSel), labeled("Upscale", spanSel), labeled("To", Object.assign(el("div", "mini"), { textContent: "1080p (matched to the take's shape)" })), labeled("Driver", driverSel));
+  g.append(labeled("Model", modelSel), labeled("Upscale", spanSel), labeled("To", Object.assign(el("div", "mini"), { textContent: "1080p (matched to the take's shape)" })), labeled("Service", driverSel));
   box.append(g);
 
   const note = el("div", "mini"); note.style.margin = "6px 0";
@@ -4028,20 +4033,48 @@ function upscalePanel(v, onClose) {
 
   const refresh = async () => {
     go.disabled = true; quoted = null; info.textContent = "Pricing…";
-    const m = models.find((x) => x.id === modelSel.value);
-    note.textContent = m ? m.note : "";
+    const fam = models.filter((x) => x.family === modelSel.value);
+    const useTrim = spanSel.value === "trim";
     try {
-      quoted = await post("/api/episode/upscale/quote", { dir: EP.dir, versionId: v.id, modelId: modelSel.value, useTrim: spanSel.value === "trim" });
+      const qs = await Promise.all(fam.map((r) => post("/api/episode/upscale/quote", { dir: EP.dir, versionId: v.id, modelId: r.id, useTrim }).catch(() => null)));
+      // Rebuild the service list: cheapest connected first, each with its price.
+      const keep = driverSel.value;
+      const order = fam.map((r, i) => ({ r, q: qs[i], ready: viaReady(r.via) })).sort((a, b) => (b.ready - a.ready) || ((a.q ? a.q.totalUSD : 1e9) - (b.q ? b.q.totalUSD : 1e9)));
+      driverSel.innerHTML = "";
+      order.forEach(({ r, q, ready }) => {
+        const o = document.createElement("option"); o.value = r.id;
+        o.textContent = `${VIA_UP[r.via] || r.via} — ${q ? `$${q.totalUSD.toFixed(q.totalUSD < 1 ? 3 : 2)}${q.confidence === "exact" || q.confidence === "measured" ? "" : " est."}` : "price unavailable"}${ready ? "" : " (not connected)"}`;
+        driverSel.append(o);
+      });
+      const mo = document.createElement("option"); mo.value = "mock"; mo.textContent = "mock (free rehearsal)"; driverSel.append(mo);
+      driverSel.value = routeChosen && [...driverSel.options].some((o) => o.value === keep) ? keep : order[0].r.id;
+      const row = driverSel.value === "mock" ? fam[0] : fam.find((r) => r.id === driverSel.value);
+      quoted = driverSel.value === "mock" ? qs[0] : qs[fam.indexOf(row)];
+      note.textContent = row ? row.note : "";
+      if (!quoted) throw new Error("This route could not be priced.");
       info.textContent = `Priced on ${quoted.seconds}s: $${quoted.totalUSD.toFixed(2)} (${quoted.modelLabel}, ${quoted.confidence}). Watch the result before selecting it.`;
       go.textContent = `Upscale (~$${quoted.totalUSD.toFixed(2)})`;
       go.disabled = false;
     } catch (e) { info.textContent = e.message; }
   };
-  modelSel.onchange = spanSel.onchange = refresh;
+  modelSel.onchange = () => { routeChosen = false; refresh(); };
+  spanSel.onchange = refresh;
+  driverSel.onchange = () => {
+    routeChosen = true;
+    const fam = models.filter((x) => x.family === modelSel.value);
+    const row = fam.find((r) => r.id === driverSel.value) || fam[0];
+    note.textContent = row.note;
+    post("/api/episode/upscale/quote", { dir: EP.dir, versionId: v.id, modelId: row.id, useTrim: spanSel.value === "trim" }).then((q) => {
+      quoted = q;
+      info.textContent = `Priced on ${q.seconds}s: $${q.totalUSD.toFixed(2)} (${q.modelLabel}, ${q.confidence}). Watch the result before selecting it.`;
+      go.textContent = `Upscale (~$${q.totalUSD.toFixed(2)})`;
+    }).catch((e) => { info.textContent = e.message; });
+  };
 
   go.onclick = async () => {
     if (!quoted) return;
     const isMock = driverSel.value === "mock";
+    const modelId = isMock ? models.find((x) => x.family === modelSel.value).id : driverSel.value;
     const msg = `Upscale "${v.modelLabel}" to 1080p?\n\n` +
       `${quoted.modelLabel} · ${quoted.seconds}s · ${isMock ? "MOCK driver — no real spend" : `~$${quoted.totalUSD.toFixed(2)} (charged to this episode's budget)`}\n` +
       `Creates a NEW take; the original is untouched. A paid take can't be undone away.`;
@@ -4049,7 +4082,7 @@ function upscalePanel(v, onClose) {
     go.disabled = true;
     try {
       await post("/api/episode/upscale", {
-        dir: EP.dir, versionId: v.id, modelId: modelSel.value, useTrim: spanSel.value === "trim", driver: driverSel.value,
+        dir: EP.dir, versionId: v.id, modelId, useTrim: spanSel.value === "trim", driver: isMock ? "mock" : undefined,
         confirmedUSD: quoted.needsConfirmation ? quoted.totalUSD : undefined,
       });
       flashNote("Upscale queued — the new take appears in the Version tray when it finishes (a few minutes; SeedVR2 takes longer).");

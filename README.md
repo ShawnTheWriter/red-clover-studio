@@ -110,7 +110,7 @@ cap yourself.
 **Draft, then finish.** On Atlas, Seedance 2.5 can make a 480p *draft* (measured: $0.134 per second) so you
 can check that a move works. **Finish at 1080p** then re-renders that same draft at full quality. That finish is
 expensive: Atlas quoted $6.53 for an 11 s draft (about $0.59 per second, an estimate until one is billed), several
-times the draft. Upscaling the draft instead costs about $0.05 per second, so compare before you finish. Faces and
+times the draft. Upscaling the draft instead costs about $0.05 per second (SeedVR2 on fal; the Bytedance upscaler is also on Atlas, Atlas has its own upscaler, and Topaz is on Sume), so compare before you finish. Faces and
 small detail are re-rendered by a finish, so check the result.
 
 **Sound on or off.** On Seedance rows that have it (Atlas, and Comfy), a **Sound On | Off** switch turns the model's

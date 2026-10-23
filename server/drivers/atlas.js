@@ -115,6 +115,27 @@ export class AtlasDriver extends BaseDriver {
     return { jobId: id, statusUrl: `${this.base}/model/prediction/${id}`, responseUrl: null, ...uploaded };
   }
 
+  // Upscale a finished clip (Atlas's own and BytePlus's video upscalers). The clip is
+  // uploaded like any other input. fps is sent so BytePlus bills the 30 fps tier.
+  async generateUpscale({ videoPath, modelId, target = "1080p", fps = 24 }) {
+    if (!this.key) throw new Error("ATLAS_API_KEY not set");
+    const videoUrl = await this.uploadFile(videoPath);
+    let body;
+    if (modelId.includes("byteplus/video/upscaler")) {
+      body = { model: "byteplus/video/upscaler", video_url: videoUrl, tool_version: "standard", scene: "aigc", resolution: target, bitrate_level: "high", fps: Math.min(30, Math.max(15, Math.round(Number(fps) || 24))) };
+    } else if (modelId.includes("atlascloud/video-upscaler")) {
+      body = { model: "atlascloud/video-upscaler", video: videoUrl, target_resolution: target };
+    } else {
+      throw new Error(`no Atlas request mapping for upscale model "${modelId}"`);
+    }
+    const res = await this.fetch(`${this.base}/model/generateVideo`, { method: "POST", headers: this.headers({ "content-type": "application/json" }), body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`Atlas upscale failed: ${res.status} ${await res.text()}`);
+    const out = await res.json();
+    const id = out && out.data && out.data.id;
+    if (!id) throw new Error(`Atlas upscale returned no prediction id: ${JSON.stringify(out).slice(0, 300)}`);
+    return { jobId: id, statusUrl: `${this.base}/model/prediction/${id}`, responseUrl: null };
+  }
+
   // Finish a draft at 1080p: only the draft's id is sent. Atlas's finish
   // inherits the draft's prompt, inputs, duration, ratio, seed and audio.
   async generateFinish({ draftId, modelId }) {

@@ -124,6 +124,34 @@ export class SumeDriver extends BaseDriver {
     return { jobId: id, statusUrl: d.status_url || `${this.base}/v1/jobs/${id}/status`, responseUrl: d.result_url || `${this.base}/v1/jobs/${id}/result`, ...uploaded };
   }
 
+  // Upscale a finished clip with Topaz Video (video-router, video_url + upscale{}).
+  // Sume wants the clip's length in whole seconds and bills double when no frame rate
+  // is sent or it is above 30, so the take's rate goes in, capped at 30. The factor
+  // reaches the target from the source's short edge; the app's conform step then
+  // sets the exact size.
+  async generateUpscale({ videoPath, modelId, target = "1080p", fps = 24, seconds, sourceShort }) {
+    if (!this.key) throw new Error("SUME_API_KEY not set");
+    if (!String(modelId).includes("topaz-video")) throw new Error(`no Sume request mapping for upscale model "${modelId}"`);
+    const videoUrl = await this.uploadFile(videoPath);
+    const want = Number(String(target).replace(/p$/i, "")) || 1080;
+    const factor = Math.min(4, Math.max(1, Math.ceil(want / (Number(sourceShort) || 480))));
+    const body = {
+      model: "topaz-video", video_url: videoUrl, resolution: target,
+      duration: Math.max(2, Math.ceil(Number(seconds) || 2)), mode: "async",
+      upscale: { factor, fps: Math.min(30, Math.max(16, Math.round(Number(fps) || 24))) },
+    };
+    const res = await this.fetch(`${this.base}/v1/video-router/generate`, {
+      method: "POST",
+      headers: this.headers({ "content-type": "application/json", "idempotency-key": crypto.randomUUID() }),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Sume upscale failed: ${res.status} ${await res.text()}`);
+    const d = (await res.json()).data || {};
+    const id = d.job && d.job.id;
+    if (!id) throw new Error(`Sume upscale returned no job id: ${JSON.stringify(d).slice(0, 300)}`);
+    return { jobId: id, statusUrl: d.status_url || `${this.base}/v1/jobs/${id}/status`, responseUrl: d.result_url || `${this.base}/v1/jobs/${id}/result` };
+  }
+
   // Sume cancels only before the provider has started (409 afterwards).
   async cancelJob({ jobId }) {
     const res = await this.fetch(`${this.base}/v1/jobs/${jobId}/cancel`, { method: "POST", headers: this.headers() });

@@ -1024,7 +1024,7 @@ r.post("/api/episode/upscale", async ({ body }) =>
     modelId: body.modelId,
     target: body.target || "1080p",
     useTrim: body.useTrim !== false,
-    driver: body.driver || "fal",
+    driver: body.driver, // undefined = the model row's own service
     confirmedUSD: body.confirmedUSD,
   }));
 
